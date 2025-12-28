@@ -18,6 +18,7 @@ import {
   FileText,
   Info,
   X,
+  Download,
 } from "lucide-react"
 import * as d3 from "d3"
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart } from "recharts"
@@ -615,6 +616,27 @@ export default function NervosIntelAnalyzer() {
     }
   }
 
+  const handleDownloadJson = () => {
+    if (!data) return
+    
+    // 创建文件名，包含日期和TopicID（如果有）
+    const dateStr = new Date().toISOString().split('T')[0]
+    const topicId = url.match(/\/t\/[^/]+\/(\d+)/)?.[1] || "unknown"
+    const fileName = `nervos-talk-analysis-${topicId}-${dateStr}.json`
+
+    // 创建 Blob 对象
+    const jsonString = JSON.stringify(data, null, 2)
+    const blob = new Blob([jsonString], { type: "application/json" })
+    
+    // 触发下载
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const verifyApiKey = async () => {
     if (!apiKey) return
     setVerifying(true)
@@ -1053,13 +1075,36 @@ ${JSON.stringify(postsSummary, null, 2)}
                 className="flex-1 bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500"
               />
             </div>
-            <button
-              onClick={handleAnalyze}
-              disabled={loading || !url}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 rounded-lg font-medium transition-colors text-white"
-            >
-              {loading ? "分析中... Analyzing..." : "分析 Analyze"}
-            </button>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleAnalyze}
+                disabled={loading || !url}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    分析中... Analyzing...
+                  </>
+                ) : (
+                  "分析 Analyze"
+                )}
+              </button>
+
+              {/* 仅当有数据时显示下载按钮 */}
+              {data && (
+                <button
+                  onClick={handleDownloadJson}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-green-400 border border-slate-600 hover:border-green-500/50 rounded-lg font-medium transition-all flex items-center gap-2 shadow-lg"
+                  title="Download Raw JSON Data"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">JSON</span>
+                </button>
+              )}
+            </div>
+
           </CardContent>
         </Card>
 
