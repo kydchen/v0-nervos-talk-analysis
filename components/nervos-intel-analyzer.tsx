@@ -1010,7 +1010,7 @@ ${JSON.stringify(postsSummary, null, 2)}
                         to liked
                       </li>
                       <li>
-                        颜色 / Colors: 🔴红色=管理员/Admin 🟢绿色=版主/Moderator 🟡黄色=高信任用户/High Trust
+                        颜色 / Colors: 🔴红色=管理员/Admin 🟢绿色=版主/Moderator 🟡黄色=高信任用户 （基于论坛本身算法）/High Trust (Based on the forum's own algorithm)
                         🔵蓝色=普通用户/Regular User
                       </li>
                     </ul>
@@ -1233,7 +1233,7 @@ ${JSON.stringify(postsSummary, null, 2)}
                     <span className="w-3 h-3 rounded-full bg-teal-400"></span> Mod
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-yellow-400"></span> LV3+
+                    <span className="w-3 h-3 rounded-full bg-yellow-400"></span> LV3+ (论坛本身算法/Forum's own algorithm)
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-full bg-blue-300"></span> Others
