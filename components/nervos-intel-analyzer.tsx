@@ -554,7 +554,7 @@ export default function NervosIntelAnalyzer() {
         const postsData = await postsRes.json()
         console.log(`[v0] Received ${postsData.post_stream.posts.length} posts in this chunk`)
         allPosts.push(...postsData.post_stream.posts)
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 250))
       }
 
       console.log(`[v0] Total posts fetched: ${allPosts.length}`)
@@ -595,7 +595,7 @@ export default function NervosIntelAnalyzer() {
           } catch (err) {
             console.error(`Failed to fetch likes for post ${post.id}:`, err)
           }
-          await new Promise((resolve) => setTimeout(resolve, 500))
+          await new Promise((resolve) => setTimeout(resolve, 100))
         }
       }
 
