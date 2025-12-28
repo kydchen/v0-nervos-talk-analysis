@@ -1097,7 +1097,7 @@ ${JSON.stringify(postsSummary, null, 2)}
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Sparkles className="w-5 h-5 text-purple-400" />
-                  AI Analysis / AI 分析
+                  AI Analysis / AI 分析 ⚠️ AI may make mistakes / AI 可能会出错 ⚠️ 
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
