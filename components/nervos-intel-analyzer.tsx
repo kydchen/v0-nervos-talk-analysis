@@ -281,11 +281,10 @@ const analyzeUserWeight = (post) => {
 // }
 
 // Network Graph Component using D3
-// 增加 userSummaries 参数
 const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Record<string, string> }) => {
   const svgRef = useRef(null)
   const containerRef = useRef(null)
-  // 新增：当前悬停的用户信息
+  // hover to show AI card
   const [hoveredNode, setHoveredNode] = useState<{ id: string; summary?: string } | null>(null)
 
   useEffect(() => {
@@ -294,7 +293,7 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
     const width = containerRef.current?.clientWidth || 800
     const height = 500
 
-    // ... (1. 数据处理 & 构建图谱数据 - 这部分逻辑保持不变) ...
+    // ... (1. data Prepare) ...
     const userMap = new Map()
     const links = []
 
@@ -334,7 +333,7 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
 
     const nodes = Array.from(userMap.values())
     const d3Links = links.map((d) => ({ ...d }))
-    // ... (数据处理结束) ...
+    // ... (data pre end) ...
 
     d3.select(svgRef.current).selectAll("*").remove()
 
@@ -368,7 +367,6 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
         d3.forceCollide().radius((d: any) => 15 + Math.min(d.posts * 2 + d.receivedLikes, 30)),
       )
 
-    // ... (绘制 link, arrow, node 的逻辑保持不变) ...
     const link = g
       .append("g")
       .attr("class", "links")
@@ -417,22 +415,21 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
       .style("pointer-events", "none")
       .style("text-shadow", "1px 1px 2px #000")
 
-    // --- 交互逻辑更新 ---
+    // ---interaction ---
     const isConnected = (a: any, b: any) => d3Links.some((l) => l.source.id === a.id && l.target.id === b.id)
 
     const fade = (opacity: number) => (event: any, d: any) => {
-      // 1. 设置 React State (用于显示左下角卡片)
+      // 1. React State for AI card
       if (opacity === 1) {
-        setHoveredNode(null) // 鼠标移开
+        setHoveredNode(null) 
       } else {
-        // 鼠标移入：从 props 里的 userSummaries 查找 AI 总结
         setHoveredNode({
           id: d.id,
           summary: userSummaries?.[d.id] || "No AI summary available yet (Run AI Analysis first).",
         })
       }
 
-      // 2. D3 视觉效果 (保持之前的逻辑)
+      // 2. D3 vision
       if (opacity === 1) {
         node.style("opacity", 1)
         link.style("stroke-opacity", 0.4).attr("stroke", "#64b5f6")
@@ -451,7 +448,6 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
     node.on("mouseover", fade(0.1)).on("mouseout", fade(1))
 
     simulation.on("tick", () => {
-      // ... (tick 逻辑不变) ...
       nodes.forEach((d: any) => {
         d.x = Math.max(20, Math.min(width - 20, d.x))
         d.y = Math.max(20, Math.min(height - 20, d.y))
@@ -476,7 +472,7 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
       if (!event.active) simulation.alphaTarget(0.3).restart()
       d.fx = d.x
       d.fy = d.y
-      fade(0.1)(event, d) // 拖拽开始触发高亮
+      fade(0.1)(event, d) 
     }
     function dragged(event: any, d: any) {
       d.fx = event.x
@@ -486,17 +482,17 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
       if (!event.active) simulation.alphaTarget(0)
       d.fx = null
       d.fy = null
-      fade(1)(event, d) // 拖拽结束恢复
+      fade(1)(event, d)
     }
 
     return () => simulation.stop()
-  }, [data, userSummaries]) // 依赖项加入 userSummaries
+  }, [data, userSummaries]) 
 
   return (
     <div ref={containerRef} className="w-full h-full relative">
       <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-      {/* 👇👇👇 新增：左下角 AI 总结卡片悬浮层 👇👇👇 */}
+      {/* AI Card */}
       {hoveredNode && userSummaries && userSummaries[hoveredNode.id] && (
         <div className="absolute bottom-4 left-4 max-w-[300px] z-10 animate-in fade-in slide-in-from-bottom-2">
           <div className="bg-slate-900/90 backdrop-blur-md border border-purple-500/50 rounded-xl p-4 shadow-2xl shadow-purple-900/20">
@@ -1076,7 +1072,7 @@ You must output TWO parts separated by a specific delimiter "|||JSON_DATA|||".
 [Chinese Translation]
 
 **PART 2: User Personas (JSON)**
-After the report, output the delimiter "|||JSON_DATA|||", followed strictly by a JSON object mapping usernames to a **single sentence summary (under 20 words)** of their stance or persona in this specific discussion. Use the predominant language of the thread (or Chinese).
+After the report, output the delimiter "|||JSON_DATA|||", followed strictly by a JSON object mapping usernames to a **single sentence summary (under 20 words)** of their stance or persona in this specific discussion. Use English.
 Format:
 {
   "username1": "Strongly supports the proposal citing liquidity needs.",
