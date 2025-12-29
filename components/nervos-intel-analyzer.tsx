@@ -19,6 +19,7 @@ import {
   Info,
   X,
   Download,
+  Trash2,
 } from "lucide-react"
 import * as d3 from "d3"
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart } from "recharts"
@@ -45,190 +46,6 @@ const analyzeUserWeight = (post) => {
   return roles.join("|")
 }
 
-// // Network Graph Component using D3
-// const NetworkGraph = ({ data }) => {
-//   const svgRef = useRef(null)
-//   const containerRef = useRef(null)
-
-//   useEffect(() => {
-//     if (!data?.posts?.length || !svgRef.current) return
-
-//     const width = containerRef.current?.clientWidth || 800
-//     const height = 500
-
-//     // Build nodes and links
-//     const userMap = new Map()
-//     const links = []
-
-//     data.posts.forEach((post) => {
-//       if (!userMap.has(post.author)) {
-//         userMap.set(post.author, {
-//           id: post.author,
-//           posts: 0,
-//           receivedLikes: 0,
-//           givenLikes: 0,
-//           isAdmin: post.author_tags?.includes("Admin") || false,
-//           isMod: post.author_tags?.includes("Mod") || false,
-//           trustLevel: post.author_trust_level || 0,
-//         })
-//       }
-//       const user = userMap.get(post.author)
-//       user.posts++
-//       user.receivedLikes += post.likes
-//       ;(post.liked_by || []).forEach((liker) => {
-//         if (!userMap.has(liker)) {
-//           userMap.set(liker, {
-//             id: liker,
-//             posts: 0,
-//             receivedLikes: 0,
-//             givenLikes: 0,
-//             isAdmin: false,
-//             isMod: false,
-//             trustLevel: 0,
-//           })
-//         }
-//         userMap.get(liker).givenLikes++
-//         links.push({ source: liker, target: post.author })
-//       })
-//     })
-
-//     const nodes = Array.from(userMap.values())
-
-//     // Aggregate links
-//     const linkMap = new Map()
-//     links.forEach((l) => {
-//       const key = `${l.source}->${l.target}`
-//       linkMap.set(key, (linkMap.get(key) || 0) + 1)
-//     })
-
-//     const aggregatedLinks = Array.from(linkMap.entries()).map(([key, count]) => {
-//       const [source, target] = key.split("->")
-//       return { source, target, count }
-//     })
-
-//     console.log("[v0] Network graph - nodes:", nodes.length, "links:", aggregatedLinks.length)
-
-//     // Clear previous
-//     d3.select(svgRef.current).selectAll("*").remove()
-
-//     const svg = d3
-//       .select(svgRef.current)
-//       .attr("width", width)
-//       .attr("height", height)
-//       .attr("viewBox", [0, 0, width, height])
-
-//     svg
-//       .append("defs")
-//       .append("marker")
-//       .attr("id", "arrow")
-//       .attr("viewBox", "0 -5 10 10")
-//       .attr("refX", 20)
-//       .attr("refY", 0)
-//       .attr("markerWidth", 6)
-//       .attr("markerHeight", 6)
-//       .attr("orient", "auto")
-//       .append("path")
-//       .attr("fill", "#ffffff88")
-//       .attr("d", "M0,-5L10,0L0,5")
-
-//     // Add zoom
-//     const g = svg.append("g")
-//     svg.call(
-//       d3
-//         .zoom()
-//         .scaleExtent([0.3, 3])
-//         .on("zoom", (event) => {
-//           g.attr("transform", event.transform)
-//         }),
-//     )
-
-//     // Simulation
-//     const simulation = d3
-//       .forceSimulation(nodes)
-//       .force(
-//         "link",
-//         d3
-//           .forceLink(aggregatedLinks)
-//           .id((d) => d.id)
-//           .distance(100),
-//       )
-//       .force("charge", d3.forceManyBody().strength(-300))
-//       .force("center", d3.forceCenter(width / 2, height / 2))
-//       .force("collision", d3.forceCollide().radius(30))
-
-//     const link = g
-//       .append("g")
-//       .selectAll("line")
-//       .data(aggregatedLinks)
-//       .join("line")
-//       .attr("stroke", "#64b5f6")
-//       .attr("stroke-width", (d) => Math.max(1, Math.min(d.count * 0.5, 5)))
-//       .attr("stroke-opacity", 0.6)
-//       .attr("marker-end", "url(#arrow)")
-
-//     // Nodes
-//     const node = g
-//       .append("g")
-//       .selectAll("g")
-//       .data(nodes)
-//       .join("g")
-//       .call(
-//         d3
-//           .drag()
-//           .on("start", (event, d) => {
-//             if (!event.active) simulation.alphaTarget(0.3).restart()
-//             d.fx = d.x
-//             d.fy = d.y
-//           })
-//           .on("drag", (event, d) => {
-//             d.fx = event.x
-//             d.fy = event.y
-//           })
-//           .on("end", (event, d) => {
-//             if (!event.active) simulation.alphaTarget(0)
-//             d.fx = null
-//             d.fy = null
-//           }),
-//       )
-
-//     node
-//       .append("circle")
-//       .attr("r", (d) => 8 + Math.min(d.posts * 2 + d.receivedLikes, 20))
-//       .attr("fill", (d) => (d.isAdmin ? "#ff6b6b" : d.isMod ? "#4ecdc4" : d.trustLevel >= 3 ? "#ffe66d" : "#a8dadc"))
-//       .attr("stroke", "#fff")
-//       .attr("stroke-width", 1.5)
-
-//     node
-//       .append("text")
-//       .text((d) => d.id)
-//       .attr("font-size", 10)
-//       .attr("dx", 12)
-//       .attr("dy", 4)
-//       .attr("fill", "#fff")
-
-//     node
-//       .append("title")
-//       .text((d) => `${d.id}\nPosts: ${d.posts}\nReceived: ${d.receivedLikes} likes\nGiven: ${d.givenLikes} likes`)
-
-//     simulation.on("tick", () => {
-//       link
-//         .attr("x1", (d) => d.source.x)
-//         .attr("y1", (d) => d.source.y)
-//         .attr("x2", (d) => d.target.x)
-//         .attr("y2", (d) => d.target.y)
-
-//       node.attr("transform", (d) => `translate(${d.x},${d.y})`)
-//     })
-
-//     return () => simulation.stop()
-//   }, [data])
-
-//   return (
-//     <div ref={containerRef} className="w-full h-full">
-//       <svg ref={svgRef} className="w-full h-full" />
-//     </div>
-//   )
-// }
 
 // Network Graph Component using D3
 const NetworkGraph = ({ data }) => {
@@ -246,7 +63,7 @@ const NetworkGraph = ({ data }) => {
     const links = []
 
     data.posts.forEach((post) => {
-      // 1. 初始化用户节点 (如果不存在)
+      // 1. User Nodes
       if (!userMap.has(post.author)) {
         userMap.set(post.author, {
           id: post.author,
@@ -259,19 +76,16 @@ const NetworkGraph = ({ data }) => {
         })
       }
       
-      // 2. 获取用户对象并更新数据
+      // 2. User objects
       const user = userMap.get(post.author)
       user.posts++
       user.receivedLikes += post.likes
       
-      // --- 关键修复：累积更新身份状态 ---
-      // 只要该用户在任何一条帖子中被标记为 Admin/Mod，就确认其身份
       if (post.author_tags?.includes("Admin")) user.isAdmin = true
       if (post.author_tags?.includes("Mod")) user.isMod = true
-      // 更新信任等级 (取最高值)
       if (post.author_trust_level > user.trustLevel) user.trustLevel = post.author_trust_level
 
-      // 3. 处理点赞连线
+      // 3. links
       ;(post.liked_by || []).forEach((liker) => {
         if (!userMap.has(liker)) {
           userMap.set(liker, {
@@ -388,7 +202,7 @@ const NetworkGraph = ({ data }) => {
 
     node
       .append("circle")
-      // 这里的逻辑决定了圆圈大小：基础大小8 + 活跃度权重
+      // Node size
       .attr("r", (d) => 8 + Math.min(d.posts * 2 + d.receivedLikes, 20))
       .attr("fill", (d) => (d.isAdmin ? "#ff6b6b" : d.isMod ? "#4ecdc4" : d.trustLevel >= 3 ? "#ffe66d" : "#a8dadc"))
       .attr("stroke", "#fff")
@@ -494,7 +308,7 @@ export default function NervosIntelAnalyzer() {
   const [aiAnalysis, setAiAnalysis] = useState("")
   const [isKeyVerified, setIsKeyVerified] = useState(false)
   const [availableModels, setAvailableModels] = useState<{name: string, displayName: string}[]>([])
-  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash") // 默认 Flash 2.5 版本
+  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash") // Default Flash 2.5
   const [verifying, setVerifying] = useState(false)
   const [showInstructions, setShowInstructions] = useState(true)
   const [error, setError] = useState(null)
@@ -502,6 +316,23 @@ export default function NervosIntelAnalyzer() {
   const [filterRole, setFilterRole] = useState("all")
   const [expandedPost, setExpandedPost] = useState(null)
   const [progressMessages, setProgressMessages] = useState<string[]>([])
+
+  
+  // Read Local API Key
+  useEffect(() => {
+    const savedKey = localStorage.getItem("gemini_api_key")
+    if (savedKey) {
+      setApiKey(savedKey)
+    }
+  }, [])
+
+  // Clear Key
+  const handleClearKey = () => {
+    setApiKey("")
+    setIsKeyVerified(false)
+    setAvailableModels([])
+    localStorage.removeItem("gemini_api_key")
+  }
 
   const handleAnalyze = async () => {
     if (!url) return
@@ -619,16 +450,13 @@ export default function NervosIntelAnalyzer() {
   const handleDownloadJson = () => {
     if (!data) return
     
-    // 创建文件名，包含日期和TopicID（如果有）
     const dateStr = new Date().toISOString().split('T')[0]
     const topicId = url.match(/\/t\/[^/]+\/(\d+)/)?.[1] || "unknown"
     const fileName = `nervos-talk-analysis-${topicId}-${dateStr}.json`
 
-    // 创建 Blob 对象
     const jsonString = JSON.stringify(data, null, 2)
     const blob = new Blob([jsonString], { type: "application/json" })
     
-    // 触发下载
     const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
     link.download = fileName
@@ -644,7 +472,7 @@ export default function NervosIntelAnalyzer() {
     setAvailableModels([])
 
     try {
-      // 调用 Gemini 模型列表接口
+      // Gemini list
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
       )
@@ -653,20 +481,18 @@ export default function NervosIntelAnalyzer() {
       
       const data = await response.json()
       
-      // 筛选出适合聊天的模型 (主要是 1.5 系列)
       const models = data.models
         .filter((m: any) => 
           m.supportedGenerationMethods.includes("generateContent") && 
           (m.name.includes("gemini"))
         )
         .map((m: any) => ({
-          name: m.name.replace("models/", ""), // 去掉前缀
+          name: m.name.replace("models/", ""), 
           displayName: m.displayName
         }))
-        .sort((a, b) => b.name.localeCompare(a.name)) // Pro 排前面
+        .sort((a, b) => b.name.localeCompare(a.name))
 
       if (models.length === 0) {
-        // 如果没取到，给几个默认的
         setAvailableModels([
           { name: "gemini-2.5-pro", displayName: "Gemini 2.5 Pro" },
           { name: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash" },
@@ -676,8 +502,9 @@ export default function NervosIntelAnalyzer() {
       }
       
       setIsKeyVerified(true)
-      // 默认选中第一个（通常是 Pro）
       if (models.length > 0) setSelectedModel(models[0].name)
+
+      localStorage.setItem("gemini_api_key", apiKey) // local API Key
       
     } catch (err) {
       setError(err instanceof Error ? err.message : "API Key 验证失败 / API Key verification failed.")
@@ -687,6 +514,7 @@ export default function NervosIntelAnalyzer() {
     }
   }
 
+// V1 prompts
 //   const runAiAnalysis = async () => {
 //     if (!apiKey || !data) return
 
@@ -802,18 +630,16 @@ export default function NervosIntelAnalyzer() {
     setAiLoading(true)
     setAiAnalysis("")
 
-    // 增加数据量，Flash/Pro 的 Context window 很大，可以多传一点
-    // 增加 created_at 以便 AI 判断时间跨度
     const postsSummary = data.posts.slice(0, 100).map((p) => ({
       floor: p.floor,
       author: p.author,
-      date: p.created_at, // 传入时间
+      date: p.created_at, 
       is_admin_mod: p.author_tags.some(t => ["Admin", "Mod"].includes(t)),
-      content: p.content.slice(0, 800), // 增加内容长度
+      content: p.content.slice(0, 800), // Content Length
       likes: p.likes,
     }))
 
-    // --- 优化后的 Prompt ---
+   
     const prompt = `You are an expert data analyst specializing in blockchain community governance. Analyze the provided JSON discussion data.
 
 **Context**:
@@ -870,7 +696,6 @@ ${JSON.stringify(postsSummary, null, 2)}
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            // 增加 temperature 参数，降低随机性，提高准确度
             generationConfig: {
                 temperature: 0.2, 
             }
@@ -1149,19 +974,32 @@ ${JSON.stringify(postsSummary, null, 2)}
                 <div className="space-y-3">
                   <label className="block text-sm text-white">Google Gemini API Key （输入后，点击Verify获取模型列表 After entering the API Key, click Verify to get the model list.）</label>
                   
-                  {/* API Key 输入框 + 验证按钮组合 */}
+                  {/* API Key input window + buttons */}
                   <div className="flex gap-2">
-                    <Input
-                      type="password"
-                      placeholder="Enter your Gemini API key..."
-                      value={apiKey}
-                      onChange={(e) => {
-                        setApiKey(e.target.value)
-                        setIsKeyVerified(false) // Key 变化时重置验证状态
-                        setAvailableModels([]) // 清空模型列表
-                      }}
-                      className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 flex-1"
-                    />
+                    <div className="relative flex-1">
+                      <Input
+                        type="password"
+                        placeholder="Enter your Gemini API key..."
+                        value={apiKey}
+                        onChange={(e) => {
+                          setApiKey(e.target.value)
+                          setIsKeyVerified(false)
+                          setAvailableModels([])
+                        }}
+                        className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 w-full pr-8"
+                      />
+                      
+                      {apiKey && (
+                        <button
+                          onClick={handleClearKey}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-400 transition-colors"
+                          title="Clear saved key / 清除保存的 Key"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
                     <button
                       onClick={verifyApiKey}
                       disabled={!apiKey || verifying}
