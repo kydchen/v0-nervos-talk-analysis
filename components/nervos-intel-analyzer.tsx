@@ -340,34 +340,47 @@ export default function NervosIntelAnalyzer() {
   const renderAnalysisWithLinks = (text: string) => {
     if (!text) return null
     
-    const parts = text.split(/(\(Floor\s+\d+\))/g)
+    const citationRegex = /([\(\（]\s*(?:Floor|楼层)\s*(?:(?:\d+)(?:[,，\s]|Floor|楼层)*)+[\)\）])/gi
+    
+    const parts = text.split(citationRegex)
 
     return parts.map((part, index) => {
-      const match = part.match(/\(Floor\s+(\d+)\)/)
-      
-      if (match) {
-        const floor = match[1]
+      if (/^[\(\（]\s*(?:Floor|楼层)/i.test(part)) {
+        
+        const subParts = part.split(/(\d+)/g)
+        
         return (
-          <span
-            key={index}
-            className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-mono bg-blue-500/10 px-1 rounded mx-0.5"
-            onClick={() => {
-              const el = document.getElementById(`post-${floor}`)
-              if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "center" })
-                el.classList.add("ring-2", "ring-yellow-400", "scale-[1.02]")
-                setTimeout(() => {
-                  el.classList.remove("ring-2", "ring-yellow-400", "scale-[1.02]")
-                }, 2000)
-              } else {
-                alert(`Post #${floor} is currently hidden by filters or not loaded. / 第 ${floor} 楼当前被筛选隐藏或未加载。`)
+          <span key={index} className="text-slate-400">
+            {subParts.map((subPart, subIndex) => {
+              if (/^\d+$/.test(subPart)) {
+                 const floor = parseInt(subPart)
+                 return (
+                   <span
+                      key={subIndex}
+                      className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-mono mx-0.5"
+                      onClick={() => {
+                        const el = document.getElementById(`post-${floor}`)
+                        if (el) {
+                          el.scrollIntoView({ behavior: "smooth", block: "center" })
+                          el.classList.add("ring-2", "ring-yellow-400", "scale-[1.05]", "transition-all", "duration-500")
+                          setTimeout(() => {
+                            el.classList.remove("ring-2", "ring-yellow-400", "scale-[1.05]")
+                          }, 2000)
+                        } else {
+                          alert(`Post #${floor} is not visible (check filters). / 第 ${floor} 楼当前不可见（请检查筛选）。`)
+                        }
+                      }}
+                   >
+                     {subPart}
+                   </span>
+                 )
               }
-            }}
-          >
-            {part}
+              return <span key={subIndex}>{subPart}</span>
+            })}
           </span>
         )
       }
+      
       return part
     })
   }
