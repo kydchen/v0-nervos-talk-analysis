@@ -336,53 +336,102 @@ export default function NervosIntelAnalyzer() {
     localStorage.removeItem("gemini_api_key")
   }
 
-  // --- Text render + Floor link ---
-  const renderAnalysisWithLinks = (text: string) => {
-    if (!text) return null
-    
-    const citationRegex = /([\(\（]\s*(?:Floor|楼层)\s*(?:(?:\d+)(?:[,，\s]|Floor|楼层)*)+[\)\）])/gi
-    
-    const parts = text.split(citationRegex)
+  // --- Text render + Floor link + MD ---
+  const MarkdownRenderer = ({ content }: { content: string }) => {
+    if (!content) return null
 
-    return parts.map((part, index) => {
-      if (/^[\(\（]\s*(?:Floor|楼层)/i.test(part)) {
-        
-        const subParts = part.split(/(\d+)/g)
-        
-        return (
-          <span key={index} className="text-slate-400">
-            {subParts.map((subPart, subIndex) => {
-              if (/^\d+$/.test(subPart)) {
-                 const floor = parseInt(subPart)
-                 return (
-                   <span
+    // A. Internal Helper
+    const parseFloorLinks = (text: string) => {
+      const citationRegex = /([\(\（]\s*(?:Floor|楼层)\s*(?:(?:\d+)(?:[,，\s]|Floor|楼层)*)+[\)\）])/gi
+      const parts = text.split(citationRegex)
+
+      return parts.map((part, index) => {
+        if (citationRegex.test(part)) {
+          const subParts = part.split(/(\d+)/g)
+          return (
+            <span key={index} className="text-slate-500 text-sm mx-1">
+              {subParts.map((subPart, subIndex) => {
+                if (/^\d+$/.test(subPart)) {
+                  const floor = parseInt(subPart)
+                  return (
+                    <span
                       key={subIndex}
-                      className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-mono mx-0.5"
+                      className="text-blue-400 hover:text-blue-300 hover:underline cursor-pointer font-mono bg-blue-900/30 px-1 rounded transition-colors"
                       onClick={() => {
                         const el = document.getElementById(`post-${floor}`)
                         if (el) {
                           el.scrollIntoView({ behavior: "smooth", block: "center" })
-                          el.classList.add("ring-2", "ring-yellow-400", "scale-[1.05]", "transition-all", "duration-500")
-                          setTimeout(() => {
-                            el.classList.remove("ring-2", "ring-yellow-400", "scale-[1.05]")
-                          }, 2000)
+                          el.classList.add("ring-2", "ring-yellow-400", "scale-[1.02]")
+                          setTimeout(() => el.classList.remove("ring-2", "ring-yellow-400", "scale-[1.02]"), 2000)
                         } else {
-                          alert(`Post #${floor} is not visible (check filters). / 第 ${floor} 楼当前不可见（请检查筛选）。`)
+                          alert(`Post #${floor} hidden. / 楼层 #${floor} 不可见。`)
                         }
                       }}
-                   >
-                     {subPart}
-                   </span>
-                 )
-              }
-              return <span key={subIndex}>{subPart}</span>
-            })}
-          </span>
-        )
-      }
-      
-      return part
-    })
+                    >
+                      {subPart}
+                    </span>
+                  )
+                }
+                return <span key={subIndex}>{subPart}</span>
+              })}
+            </span>
+          )
+        }
+        return part
+      })
+    }
+
+    // B. **Bold**
+    const parseBold = (text: string) => {
+      const parts = text.split(/(\*\*.*?\*\*)/g)
+      return parts.map((part, index) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={index} className="text-white font-bold">{parseFloorLinks(part.slice(2, -2))}</strong>
+        }
+        return <span key={index}>{parseFloorLinks(part)}</span>
+      })
+    }
+
+    // C. Main Loop
+    return (
+      <div className="space-y-2 font-sans">
+        {content.split("\n").map((line, index) => {
+          const trimmed = line.trim()
+          if (!trimmed) return <div key={index} className="h-2" /> 
+
+          // 1. ## Title
+          if (trimmed.startsWith("## ")) {
+            return (
+              <h3 key={index} className="text-l font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-3 pb-2 border-b border-slate-700/50">
+                {trimmed.replace("## ", "")}
+              </h3>
+            )
+          }
+
+          // 2. (---)
+          if (trimmed === "---") {
+            return <hr key={index} className="border-slate-700/50 my-3" />
+          }
+
+          // 3. (* Item  - Item)
+          if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+            return (
+              <div key={index} className="flex gap-3 ml-2">
+                <span className="text-blue-300 text-[15px] mt-1.5 text-xs">●</span>
+                <span className="text-slate-300 leading-relaxed flex-1 text-[15px]">{parseBold(trimmed.substring(2))}</span>
+              </div>
+            )
+          }
+
+          // 4. Normal
+          return (
+            <p key={index} className="text-slate-300 leading-relaxed text-[15px]">
+              {parseBold(line)}
+            </p>
+          )
+        })}
+      </div>
+    )
   }
 
   const handleAnalyze = async () => {
@@ -437,7 +486,7 @@ export default function NervosIntelAnalyzer() {
         const postsData = await postsRes.json()
         console.log(`[v0] Received ${postsData.post_stream.posts.length} posts in this chunk`)
         allPosts.push(...postsData.post_stream.posts)
-        await new Promise((resolve) => setTimeout(resolve, 250))
+        await new Promise((resolve) => setTimeout(resolve, 200))
       }
 
       console.log(`[v0] Total posts fetched: ${allPosts.length}`)
@@ -478,7 +527,7 @@ export default function NervosIntelAnalyzer() {
           } catch (err) {
             console.error(`Failed to fetch likes for post ${post.id}:`, err)
           }
-          await new Promise((resolve) => setTimeout(resolve, 100))
+          await new Promise((resolve) => setTimeout(resolve, 50))
         }
       }
 
@@ -1133,13 +1182,9 @@ ${JSON.stringify(postsSummary, null, 2)}
                 </button>
                 
                 {aiAnalysis && (
-                  <div className="mt-4 p-5 bg-slate-900/80 border border-slate-700/50 rounded-xl animate-in fade-in zoom-in-95">
-                    <div className="prose prose-invert prose-sm md:prose-base max-w-none">
-                      {/* Text Render*/}
-                      <div className="whitespace-pre-wrap text-slate-200 leading-relaxed font-sans">
-                        {renderAnalysisWithLinks(aiAnalysis)} 
-                      </div>
-                    </div>
+                  <div className="mt-4 p-6 bg-slate-900/90 border border-slate-700 rounded-xl shadow-inner shadow-black/50 animate-in fade-in zoom-in-95">
+                    {/* Text Render*/}
+                    <MarkdownRenderer content={aiAnalysis} />
                   </div>
                 )}
               </CardContent>
