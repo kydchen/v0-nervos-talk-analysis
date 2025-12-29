@@ -259,7 +259,9 @@ const PostCard = ({ post, expanded, onToggle }) => {
   const BadgeIcon = badge.icon
 
   return (
-    <div className={`border rounded-lg p-3 mb-2 transition-all ${badge.color}`}>
+    <div 
+      id={`post-${post.floor}`}  //add id for jump
+      className={`border rounded-lg p-3 mb-2 transition-all ${badge.color} scroll-mt-20`}>
       <div className="flex items-center justify-between cursor-pointer" onClick={onToggle}>
         <div className="flex items-center gap-2">
           <span className="text-gray-400 font-mono">#{post.floor}</span>
@@ -332,6 +334,42 @@ export default function NervosIntelAnalyzer() {
     setIsKeyVerified(false)
     setAvailableModels([])
     localStorage.removeItem("gemini_api_key")
+  }
+
+  // --- Text render + Floor link ---
+  const renderAnalysisWithLinks = (text: string) => {
+    if (!text) return null
+    
+    const parts = text.split(/(\(Floor\s+\d+\))/g)
+
+    return parts.map((part, index) => {
+      const match = part.match(/\(Floor\s+(\d+)\)/)
+      
+      if (match) {
+        const floor = match[1]
+        return (
+          <span
+            key={index}
+            className="text-blue-400 hover:text-blue-300 underline cursor-pointer font-mono bg-blue-500/10 px-1 rounded mx-0.5"
+            onClick={() => {
+              const el = document.getElementById(`post-${floor}`)
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" })
+                el.classList.add("ring-2", "ring-yellow-400", "scale-[1.02]")
+                setTimeout(() => {
+                  el.classList.remove("ring-2", "ring-yellow-400", "scale-[1.02]")
+                }, 2000)
+              } else {
+                alert(`Post #${floor} is currently hidden by filters or not loaded. / 第 ${floor} 楼当前被筛选隐藏或未加载。`)
+              }
+            }}
+          >
+            {part}
+          </span>
+        )
+      }
+      return part
+    })
   }
 
   const handleAnalyze = async () => {
@@ -1084,8 +1122,9 @@ ${JSON.stringify(postsSummary, null, 2)}
                 {aiAnalysis && (
                   <div className="mt-4 p-5 bg-slate-900/80 border border-slate-700/50 rounded-xl animate-in fade-in zoom-in-95">
                     <div className="prose prose-invert prose-sm md:prose-base max-w-none">
+                      {/* Text Render*/}
                       <div className="whitespace-pre-wrap text-slate-200 leading-relaxed font-sans">
-                        {aiAnalysis}
+                        {renderAnalysisWithLinks(aiAnalysis)} 
                       </div>
                     </div>
                   </div>
