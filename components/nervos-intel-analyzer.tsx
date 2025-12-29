@@ -630,13 +630,14 @@ export default function NervosIntelAnalyzer() {
     setAiLoading(true)
     setAiAnalysis("")
 
-    const postsSummary = data.posts.slice(0, 100).map((p) => ({
+    const postsSummary = data.posts.slice(0, 1000).map((p) => ({
       floor: p.floor,
       author: p.author,
       date: p.created_at, 
       is_admin_mod: p.author_tags.some(t => ["Admin", "Mod"].includes(t)),
-      content: p.content.slice(0, 800), // Content Length
+      content: p.content.slice(0, 50000), // Content Length
       likes: p.likes,
+      liked_by: p.liked_by || []
     }))
 
    
@@ -652,14 +653,21 @@ ${JSON.stringify(postsSummary, null, 2)}
 
 **Critical Instructions (STRICTLY FOLLOW)**:
 1. **NO HALLUCINATIONS**: Only use facts explicitly stated in the JSON data. Do not invent dates, events, or external project histories (e.g., if the text doesn't mention a 3-year history, do not say it).
-2. **WEIGHTING**: When identifying "Camps" or "Key Opinions", prioritize users with high engagement (likes) or detailed arguments. **Do NOT** list a user as a representative of a major camp if they only posted one short, low-effort sentence.
+2. **CITATION STYLE**: When quoting a user or referencing a specific argument, **YOU MUST** append the floor number in parentheses, e.g., *"UserA argued that... (Floor 12)"*.
+3. **WEIGHTING**: When identifying "Camps" or "Key Opinions", prioritize users with high engagement (likes) or detailed arguments. **Do NOT** list a user as a representative of a major camp if they only posted one short, low-effort sentence.
 3. **TIMELINE ACCURACY**: Use the 'date' field in the JSON to determine the actual duration of the discussion.
 4. **BILINGUAL**: Provide the analysis in English first, followed immediately by Chinese.
 
 **Analysis Format**:
 
-## 1. Executive Summary / 核心摘要
-[Summarize the main conflict and conclusion. Be precise about the timeline.]
+## 1. Proposal Facts & Executive Summary / 提案事实与核心摘要
+**Proposal Facts** (If this is a proposal/grant request, extract these details. If not, mark N/A):
+* **Requested Amount**: [e.g., $50,000 / 2M CKB]
+* **Team/Author**: [Who is building this?]
+* **Est. Timeline**: [e.g., Q3 2025]
+
+**Executive Summary**:
+[Summarize the discussion timeline, the main conflict, and the conclusion/outcome. Be concise.]
 [Chinese Translation]
 
 ---
@@ -671,13 +679,13 @@ ${JSON.stringify(postsSummary, null, 2)}
 ---
 
 ## 3. Key Arguments & Camps / 核心观点与阵营
-[Identify the Pro/Con sides. **Only cite users who provided substantial arguments**. Note their credibility based on likes.]
+[Identify the Pro/Con sides. **Only cite users who provided substantial arguments**. Note their credibility based on likes.**Cite Floor Numbers**.]
 [Chinese Translation]
 
 ---
 
 ## 4. Unresolved Questions & Risks / 待澄清问题与风险
-[What questions asked by the community remain unanswered by the team? What are the biggest risks identified?]
+[What questions asked by the community remain unanswered by the team? What are the biggest risks identified? **Cite Floor Numbers**.]
 [Chinese Translation]
 
 ---
