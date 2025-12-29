@@ -46,11 +46,247 @@ const analyzeUserWeight = (post) => {
   return roles.join("|")
 }
 
+// // Network Graph Component using D3
+// const NetworkGraph = ({ data }) => {
+//   const svgRef = useRef(null)
+//   const containerRef = useRef(null)
+
+//   useEffect(() => {
+//     if (!data?.posts?.length || !svgRef.current) return
+
+//     const width = containerRef.current?.clientWidth || 800
+//     const height = 500
+
+//     // 1. Data preparation
+//     const userMap = new Map()
+//     const links = []
+
+//     data.posts.forEach((post) => {
+//       if (!userMap.has(post.author)) {
+//         userMap.set(post.author, {
+//           id: post.author,
+//           posts: 0,
+//           receivedLikes: 0,
+//           givenLikes: 0,
+//           isAdmin: false,
+//           isMod: false,
+//           trustLevel: 0,
+//         })
+//       }
+//       const user = userMap.get(post.author)
+//       user.posts++
+//       user.receivedLikes += post.likes
+
+//       // identity
+//       if (post.author_tags?.includes("Admin")) user.isAdmin = true
+//       if (post.author_tags?.includes("Mod")) user.isMod = true
+//       if (post.author_trust_level > user.trustLevel) user.trustLevel = post.author_trust_level
+
+//       // Liker -> Author
+//       ;(post.liked_by || []).forEach((liker) => {
+//         if (!userMap.has(liker)) {
+//           userMap.set(liker, {
+//             id: liker,
+//             posts: 0,
+//             receivedLikes: 0,
+//             givenLikes: 0,
+//             isAdmin: false,
+//             isMod: false,
+//             trustLevel: 0,
+//           })
+//         }
+//         userMap.get(liker).givenLikes++
+//         links.push({ source: liker, target: post.author })
+//       })
+//     })
+
+//     const nodes = Array.from(userMap.values())
+
+//     // D3 force simulation 需要对象引用的 links
+//     const d3Links = links.map(d => ({...d}))
+
+//     d3.select(svgRef.current).selectAll("*").remove()
+
+//     const svg = d3
+//       .select(svgRef.current)
+//       .attr("width", width)
+//       .attr("height", height)
+//       .attr("viewBox", [0, 0, width, height])
+
+//     const g = svg.append("g")
+
+//     svg.call(
+//       d3.zoom()
+//         .scaleExtent([0.1, 4])
+//         .on("zoom", (event) => {
+//           g.attr("transform", event.transform)
+//         })
+//     )
+
+//     // 2. Force simulation
+//     const simulation = d3
+//       .forceSimulation(nodes)
+//       .force("link", d3.forceLink(d3Links).id((d) => d.id).distance(120))
+//       .force("charge", d3.forceManyBody().strength(-400))
+//       .force("center", d3.forceCenter(width / 2, height / 2))
+//       .force("collision", d3.forceCollide().radius((d) =>
+//          15 + Math.min(d.posts * 2 + d.receivedLikes, 30)
+//       ))
+
+//     // 3. Elements
+
+//     // Links
+//     const link = g
+//       .append("g")
+//       .attr("class", "links")
+//       .selectAll("line")
+//       .data(d3Links)
+//       .join("line")
+//       .attr("stroke", "#64b5f6")
+//       .attr("stroke-opacity", 0.4)
+//       .attr("stroke-width", 1.5)
+
+//     const arrow = g
+//       .append("g")
+//       .attr("class", "arrows")
+//       .selectAll("path")
+//       .data(d3Links)
+//       .join("path")
+//       .attr("d", "M0,-4 L8,0 L0,4")
+//       .attr("fill", "#64b5f6")
+//       .attr("opacity", 0.6)
+
+//     // Nodes
+//     const node = g
+//       .append("g")
+//       .attr("class", "nodes")
+//       .selectAll("g")
+//       .data(nodes)
+//       .join("g")
+//       .call(
+//         d3.drag()
+//           .on("start", dragstarted)
+//           .on("drag", dragged)
+//           .on("end", dragended)
+//       )
+
+//     // Cycles
+//     node.append("circle")
+//       .attr("r", (d) => 8 + Math.min(d.posts * 2 + d.receivedLikes, 20))
+//       .attr("fill", (d) => (d.isAdmin ? "#ff6b6b" : d.isMod ? "#4ecdc4" : d.trustLevel >= 3 ? "#ffe66d" : "#a8dadc"))
+//       .attr("stroke", "#1e293b")
+//       .attr("stroke-width", 2)
+//       .attr("class", "node-circle")
+
+//     // Node text
+//     node.append("text")
+//       .text((d) => d.id)
+//       .attr("font-size", 11)
+//       .attr("dx", 14)
+//       .attr("dy", 4)
+//       .attr("fill", "#fff")
+//       .attr("font-weight", "500")
+//       .style("pointer-events", "none")
+//       .style("text-shadow", "1px 1px 2px #000")
+
+//     // 4. Highlight Interaction
+
+//     const isConnected = (a, b) => {
+//         return d3Links.some(l => l.source.id === a.id && l.target.id === b.id)
+//     }
+
+//     const fade = (opacity) => {
+//         return (event, d) => {
+//             if (opacity === 1) {
+//                 node.style("opacity", 1)
+//                 link.style("stroke-opacity", 0.4).attr("stroke", "#64b5f6")
+//                 arrow.attr("opacity", 0.6).attr("fill", "#64b5f6")
+//                 return
+//             }
+
+//             node.style("opacity", (o) => {
+//                 const isMe = o.id === d.id
+//                 // Highlight Nodes and likers
+//                 const isMyFan = isConnected(o, d)
+//                 return isMe || isMyFan ? 1 : 0.1
+//             })
+
+//             // 2. Link style
+//             link
+//                 .style("stroke-opacity", (o) => (o.target.id === d.id ? 1 : 0.05))
+//                 .attr("stroke", (o) => (o.target.id === d.id ? "#fbbf24" : "#64b5f6")) // golden
+
+//             // 3. arrow
+//             arrow
+//                 .attr("opacity", (o) => (o.target.id === d.id ? 1 : 0.05))
+//                 .attr("fill", (o) => (o.target.id === d.id ? "#fbbf24" : "#64b5f6"))
+//         }
+//     }
+
+//     node.on("mouseover", fade(0.1)).on("mouseout", fade(1))
+
+//     // 5. Tick
+//     simulation.on("tick", () => {
+//       nodes.forEach(d => {
+//          d.x = Math.max(20, Math.min(width - 20, d.x))
+//          d.y = Math.max(20, Math.min(height - 20, d.y))
+//       })
+
+//       link
+//         .attr("x1", d => d.source.x)
+//         .attr("y1", d => d.source.y)
+//         .attr("x2", d => d.target.x)
+//         .attr("y2", d => d.target.y)
+
+//       arrow.attr("transform", (d) => {
+//           const dx = d.target.x - d.source.x
+//           const dy = d.target.y - d.source.y
+//           const midX = (d.source.x + d.target.x) / 2
+//           const midY = (d.source.y + d.target.y) / 2
+//           const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+
+//           return `translate(${midX}, ${midY}) rotate(${angle})`
+//       })
+
+//       node.attr("transform", (d) => `translate(${d.x},${d.y})`)
+//     })
+
+//     function dragstarted(event, d) {
+//       if (!event.active) simulation.alphaTarget(0.3).restart()
+//       d.fx = d.x
+//       d.fy = d.y
+//       fade(0.1)(event, d)
+//     }
+
+//     function dragged(event, d) {
+//       d.fx = event.x
+//       d.fy = event.y
+//     }
+
+//     function dragended(event, d) {
+//       if (!event.active) simulation.alphaTarget(0)
+//       d.fx = null
+//       d.fy = null
+//       fade(1)(event, d)
+//     }
+
+//     return () => simulation.stop()
+//   }, [data])
+
+//   return (
+//     <div ref={containerRef} className="w-full h-full">
+//       <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+//     </div>
+//   )
+// }
 
 // Network Graph Component using D3
-const NetworkGraph = ({ data }) => {
+// 增加 userSummaries 参数
+const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Record<string, string> }) => {
   const svgRef = useRef(null)
   const containerRef = useRef(null)
+  // 新增：当前悬停的用户信息
+  const [hoveredNode, setHoveredNode] = useState<{ id: string; summary?: string } | null>(null)
 
   useEffect(() => {
     if (!data?.posts?.length || !svgRef.current) return
@@ -58,12 +294,11 @@ const NetworkGraph = ({ data }) => {
     const width = containerRef.current?.clientWidth || 800
     const height = 500
 
-    // Build nodes and links
+    // ... (1. 数据处理 & 构建图谱数据 - 这部分逻辑保持不变) ...
     const userMap = new Map()
     const links = []
 
     data.posts.forEach((post) => {
-      // 1. User Nodes
       if (!userMap.has(post.author)) {
         userMap.set(post.author, {
           id: post.author,
@@ -75,19 +310,14 @@ const NetworkGraph = ({ data }) => {
           trustLevel: 0,
         })
       }
-      
-      // 2. User objects
       const user = userMap.get(post.author)
       user.posts++
       user.receivedLikes += post.likes
-      
       if (post.author_tags?.includes("Admin")) user.isAdmin = true
       if (post.author_tags?.includes("Mod")) user.isMod = true
       if (post.author_trust_level > user.trustLevel) user.trustLevel = post.author_trust_level
-
-      // 3. links
       ;(post.liked_by || []).forEach((liker) => {
-        if (!userMap.has(liker)) {
+        if (!userMap.has(liker))
           userMap.set(liker, {
             id: liker,
             posts: 0,
@@ -97,27 +327,15 @@ const NetworkGraph = ({ data }) => {
             isMod: false,
             trustLevel: 0,
           })
-        }
         userMap.get(liker).givenLikes++
         links.push({ source: liker, target: post.author })
       })
     })
 
     const nodes = Array.from(userMap.values())
+    const d3Links = links.map((d) => ({ ...d }))
+    // ... (数据处理结束) ...
 
-    // Aggregate links
-    const linkMap = new Map()
-    links.forEach((l) => {
-      const key = `${l.source}->${l.target}`
-      linkMap.set(key, (linkMap.get(key) || 0) + 1)
-    })
-
-    const aggregatedLinks = Array.from(linkMap.entries()).map(([key, count]) => {
-      const [source, target] = key.split("->")
-      return { source, target, count }
-    })
-
-    // Clear previous
     d3.select(svgRef.current).selectAll("*").remove()
 
     const svg = d3
@@ -125,117 +343,172 @@ const NetworkGraph = ({ data }) => {
       .attr("width", width)
       .attr("height", height)
       .attr("viewBox", [0, 0, width, height])
-
-    svg
-      .append("defs")
-      .append("marker")
-      .attr("id", "arrow")
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 20)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("fill", "#ffffff88")
-      .attr("d", "M0,-5L10,0L0,5")
-
-    // Add zoom
     const g = svg.append("g")
+
     svg.call(
       d3
         .zoom()
-        .scaleExtent([0.3, 3])
-        .on("zoom", (event) => {
-          g.attr("transform", event.transform)
-        }),
+        .scaleExtent([0.1, 4])
+        .on("zoom", (event) => g.attr("transform", event.transform)),
     )
 
-    // Simulation
     const simulation = d3
       .forceSimulation(nodes)
       .force(
         "link",
         d3
-          .forceLink(aggregatedLinks)
-          .id((d) => d.id)
-          .distance(100),
+          .forceLink(d3Links)
+          .id((d: any) => d.id)
+          .distance(120),
       )
-      .force("charge", d3.forceManyBody().strength(-300))
+      .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(30))
+      .force(
+        "collision",
+        d3.forceCollide().radius((d: any) => 15 + Math.min(d.posts * 2 + d.receivedLikes, 30)),
+      )
 
+    // ... (绘制 link, arrow, node 的逻辑保持不变) ...
     const link = g
       .append("g")
+      .attr("class", "links")
       .selectAll("line")
-      .data(aggregatedLinks)
+      .data(d3Links)
       .join("line")
       .attr("stroke", "#64b5f6")
-      .attr("stroke-width", (d) => Math.max(1, Math.min(d.count * 0.5, 5)))
-      .attr("stroke-opacity", 0.6)
-      .attr("marker-end", "url(#arrow)")
+      .attr("stroke-opacity", 0.4)
+      .attr("stroke-width", 1.5)
 
-    // Nodes
+    const arrow = g
+      .append("g")
+      .attr("class", "arrows")
+      .selectAll("path")
+      .data(d3Links)
+      .join("path")
+      .attr("d", "M0,-4 L8,0 L0,4")
+      .attr("fill", "#64b5f6")
+      .attr("opacity", 0.6)
+
     const node = g
       .append("g")
+      .attr("class", "nodes")
       .selectAll("g")
       .data(nodes)
       .join("g")
-      .call(
-        d3
-          .drag()
-          .on("start", (event, d) => {
-            if (!event.active) simulation.alphaTarget(0.3).restart()
-            d.fx = d.x
-            d.fy = d.y
-          })
-          .on("drag", (event, d) => {
-            d.fx = event.x
-            d.fy = event.y
-          })
-          .on("end", (event, d) => {
-            if (!event.active) simulation.alphaTarget(0)
-            d.fx = null
-            d.fy = null
-          }),
-      )
+      .call(d3.drag<any, any>().on("start", dragstarted).on("drag", dragged).on("end", dragended))
 
     node
       .append("circle")
-      // Node size
-      .attr("r", (d) => 8 + Math.min(d.posts * 2 + d.receivedLikes, 20))
-      .attr("fill", (d) => (d.isAdmin ? "#ff6b6b" : d.isMod ? "#4ecdc4" : d.trustLevel >= 3 ? "#ffe66d" : "#a8dadc"))
-      .attr("stroke", "#fff")
-      .attr("stroke-width", 1.5)
+      .attr("r", (d: any) => 8 + Math.min(d.posts * 2 + d.receivedLikes, 20))
+      .attr("fill", (d: any) =>
+        d.isAdmin ? "#ff6b6b" : d.isMod ? "#4ecdc4" : d.trustLevel >= 3 ? "#ffe66d" : "#a8dadc",
+      )
+      .attr("stroke", "#1e293b")
+      .attr("stroke-width", 2)
 
     node
       .append("text")
-      .text((d) => d.id)
-      .attr("font-size", 10)
-      .attr("dx", 12)
+      .text((d: any) => d.id)
+      .attr("font-size", 11)
+      .attr("dx", 14)
       .attr("dy", 4)
       .attr("fill", "#fff")
+      .attr("font-weight", "500")
+      .style("pointer-events", "none")
+      .style("text-shadow", "1px 1px 2px #000")
 
-    node
-      .append("title")
-      .text((d) => `${d.id}\nPosts: ${d.posts}\nReceived: ${d.receivedLikes} likes\nGiven: ${d.givenLikes} likes`)
+    // --- 交互逻辑更新 ---
+    const isConnected = (a: any, b: any) => d3Links.some((l) => l.source.id === a.id && l.target.id === b.id)
+
+    const fade = (opacity: number) => (event: any, d: any) => {
+      // 1. 设置 React State (用于显示左下角卡片)
+      if (opacity === 1) {
+        setHoveredNode(null) // 鼠标移开
+      } else {
+        // 鼠标移入：从 props 里的 userSummaries 查找 AI 总结
+        setHoveredNode({
+          id: d.id,
+          summary: userSummaries?.[d.id] || "No AI summary available yet (Run AI Analysis first).",
+        })
+      }
+
+      // 2. D3 视觉效果 (保持之前的逻辑)
+      if (opacity === 1) {
+        node.style("opacity", 1)
+        link.style("stroke-opacity", 0.4).attr("stroke", "#64b5f6")
+        arrow.attr("opacity", 0.6).attr("fill", "#64b5f6")
+        return
+      }
+      node.style("opacity", (o: any) => (o.id === d.id || isConnected(o, d) ? 1 : 0.1))
+      link
+        .style("stroke-opacity", (o: any) => (o.target.id === d.id ? 1 : 0.05))
+        .attr("stroke", (o: any) => (o.target.id === d.id ? "#fbbf24" : "#64b5f6"))
+      arrow
+        .attr("opacity", (o: any) => (o.target.id === d.id ? 1 : 0.05))
+        .attr("fill", (o: any) => (o.target.id === d.id ? "#fbbf24" : "#64b5f6"))
+    }
+
+    node.on("mouseover", fade(0.1)).on("mouseout", fade(1))
 
     simulation.on("tick", () => {
+      // ... (tick 逻辑不变) ...
+      nodes.forEach((d: any) => {
+        d.x = Math.max(20, Math.min(width - 20, d.x))
+        d.y = Math.max(20, Math.min(height - 20, d.y))
+      })
       link
-        .attr("x1", (d) => d.source.x)
-        .attr("y1", (d) => d.source.y)
-        .attr("x2", (d) => d.target.x)
-        .attr("y2", (d) => d.target.y)
-
-      node.attr("transform", (d) => `translate(${d.x},${d.y})`)
+        .attr("x1", (d: any) => d.source.x)
+        .attr("y1", (d: any) => d.source.y)
+        .attr("x2", (d: any) => d.target.x)
+        .attr("y2", (d: any) => d.target.y)
+      arrow.attr("transform", (d: any) => {
+        const dx = d.target.x - d.source.x
+        const dy = d.target.y - d.source.y
+        const midX = (d.source.x + d.target.x) / 2
+        const midY = (d.source.y + d.target.y) / 2
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI)
+        return `translate(${midX}, ${midY}) rotate(${angle})`
+      })
+      node.attr("transform", (d: any) => `translate(${d.x},${d.y})`)
     })
 
+    function dragstarted(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0.3).restart()
+      d.fx = d.x
+      d.fy = d.y
+      fade(0.1)(event, d) // 拖拽开始触发高亮
+    }
+    function dragged(event: any, d: any) {
+      d.fx = event.x
+      d.fy = event.y
+    }
+    function dragended(event: any, d: any) {
+      if (!event.active) simulation.alphaTarget(0)
+      d.fx = null
+      d.fy = null
+      fade(1)(event, d) // 拖拽结束恢复
+    }
+
     return () => simulation.stop()
-  }, [data])
+  }, [data, userSummaries]) // 依赖项加入 userSummaries
 
   return (
-    <div ref={containerRef} className="w-full h-full">
-      <svg ref={svgRef} className="w-full h-full" />
+    <div ref={containerRef} className="w-full h-full relative">
+      <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+
+      {/* 👇👇👇 新增：左下角 AI 总结卡片悬浮层 👇👇👇 */}
+      {hoveredNode && userSummaries && userSummaries[hoveredNode.id] && (
+        <div className="absolute bottom-4 left-4 max-w-[300px] z-10 animate-in fade-in slide-in-from-bottom-2">
+          <div className="bg-slate-900/90 backdrop-blur-md border border-purple-500/50 rounded-xl p-4 shadow-2xl shadow-purple-900/20">
+            <div className="flex items-center gap-2 mb-2 border-b border-slate-700/50 pb-2">
+              <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></div>
+              <span className="text-purple-300 font-bold text-sm">AI Persona / AI 画像</span>
+            </div>
+            <p className="text-lg font-bold text-white mb-1">{hoveredNode.id}</p>
+            <p className="text-slate-300 text-sm italic leading-relaxed">"{userSummaries[hoveredNode.id]}"</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -259,9 +532,10 @@ const PostCard = ({ post, expanded, onToggle }) => {
   const BadgeIcon = badge.icon
 
   return (
-    <div 
-      id={`post-${post.floor}`}  //add id for jump
-      className={`border rounded-lg p-3 mb-2 transition-all ${badge.color} scroll-mt-20`}>
+    <div
+      id={`post-${post.floor}`} //add id for jump
+      className={`border rounded-lg p-3 mb-2 transition-all ${badge.color} scroll-mt-20`}
+    >
       <div className="flex items-center justify-between cursor-pointer" onClick={onToggle}>
         <div className="flex items-center gap-2">
           <span className="text-gray-400 font-mono">#{post.floor}</span>
@@ -309,7 +583,7 @@ export default function NervosIntelAnalyzer() {
   const [aiLoading, setAiLoading] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState("")
   const [isKeyVerified, setIsKeyVerified] = useState(false)
-  const [availableModels, setAvailableModels] = useState<{name: string, displayName: string}[]>([])
+  const [availableModels, setAvailableModels] = useState<{ name: string; displayName: string }[]>([])
   const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash") // Default Flash 2.5
   const [verifying, setVerifying] = useState(false)
   const [showInstructions, setShowInstructions] = useState(true)
@@ -318,8 +592,8 @@ export default function NervosIntelAnalyzer() {
   const [filterRole, setFilterRole] = useState("all")
   const [expandedPost, setExpandedPost] = useState(null)
   const [progressMessages, setProgressMessages] = useState<string[]>([])
+  const [userSummaries, setUserSummaries] = useState<Record<string, string>>({})
 
-  
   // Read Local API Key
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_api_key")
@@ -342,7 +616,7 @@ export default function NervosIntelAnalyzer() {
 
     // A. Internal Helper
     const parseFloorLinks = (text: string) => {
-      const citationRegex = /([\(\（]\s*(?:Floor|楼层)\s*(?:(?:\d+)(?:[,，\s]|Floor|楼层)*)+[\)\）])/gi
+      const citationRegex = /([$$（]\s*(?:Floor|楼层)\s*(?:(?:\d+)(?:[,，\s]|Floor|楼层)*)+[$$）])/gi
       const parts = text.split(citationRegex)
 
       return parts.map((part, index) => {
@@ -352,7 +626,7 @@ export default function NervosIntelAnalyzer() {
             <span key={index} className="text-slate-500 text-sm mx-1">
               {subParts.map((subPart, subIndex) => {
                 if (/^\d+$/.test(subPart)) {
-                  const floor = parseInt(subPart)
+                  const floor = Number.parseInt(subPart)
                   return (
                     <span
                       key={subIndex}
@@ -386,7 +660,11 @@ export default function NervosIntelAnalyzer() {
       const parts = text.split(/(\*\*.*?\*\*)/g)
       return parts.map((part, index) => {
         if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={index} className="text-white font-bold">{parseFloorLinks(part.slice(2, -2))}</strong>
+          return (
+            <strong key={index} className="text-white font-bold">
+              {parseFloorLinks(part.slice(2, -2))}
+            </strong>
+          )
         }
         return <span key={index}>{parseFloorLinks(part)}</span>
       })
@@ -397,12 +675,15 @@ export default function NervosIntelAnalyzer() {
       <div className="space-y-2 font-sans">
         {content.split("\n").map((line, index) => {
           const trimmed = line.trim()
-          if (!trimmed) return <div key={index} className="h-2" /> 
+          if (!trimmed) return <div key={index} className="h-2" />
 
           // 1. ## Title
           if (trimmed.startsWith("## ")) {
             return (
-              <h3 key={index} className="text-l font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-3 pb-2 border-b border-slate-700/50">
+              <h3
+                key={index}
+                className="text-l font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 mb-3 pb-2 border-b border-slate-700/50"
+              >
                 {trimmed.replace("## ", "")}
               </h3>
             )
@@ -418,7 +699,9 @@ export default function NervosIntelAnalyzer() {
             return (
               <div key={index} className="flex gap-3 ml-2">
                 <span className="text-blue-300 text-[15px] mt-1.5 text-xs">●</span>
-                <span className="text-slate-300 leading-relaxed flex-1 text-[15px]">{parseBold(trimmed.substring(2))}</span>
+                <span className="text-slate-300 leading-relaxed flex-1 text-[15px]">
+                  {parseBold(trimmed.substring(2))}
+                </span>
               </div>
             )
           }
@@ -549,14 +832,14 @@ export default function NervosIntelAnalyzer() {
 
   const handleDownloadJson = () => {
     if (!data) return
-    
-    const dateStr = new Date().toISOString().split('T')[0]
+
+    const dateStr = new Date().toISOString().split("T")[0]
     const topicId = url.match(/\/t\/[^/]+\/(\d+)/)?.[1] || "unknown"
     const fileName = `nervos-talk-analysis-${topicId}-${dateStr}.json`
 
     const jsonString = JSON.stringify(data, null, 2)
     const blob = new Blob([jsonString], { type: "application/json" })
-    
+
     const link = document.createElement("a")
     link.href = URL.createObjectURL(blob)
     link.download = fileName
@@ -573,22 +856,18 @@ export default function NervosIntelAnalyzer() {
 
     try {
       // Gemini list
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
-      )
-      
-      if (!response.ok) throw new Error("API Key 无效或无法访问 Google 服务 / The API key is invalid or cannot access Google services.")
-      
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
+
+      if (!response.ok)
+        throw new Error("API Key 无效或无法访问 Google 服务 / The API key is invalid or cannot access Google services.")
+
       const data = await response.json()
-      
+
       const models = data.models
-        .filter((m: any) => 
-          m.supportedGenerationMethods.includes("generateContent") && 
-          (m.name.includes("gemini"))
-        )
+        .filter((m: any) => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini"))
         .map((m: any) => ({
-          name: m.name.replace("models/", ""), 
-          displayName: m.displayName
+          name: m.name.replace("models/", ""),
+          displayName: m.displayName,
         }))
         .sort((a, b) => b.name.localeCompare(a.name))
 
@@ -600,12 +879,11 @@ export default function NervosIntelAnalyzer() {
       } else {
         setAvailableModels(models)
       }
-      
+
       setIsKeyVerified(true)
       if (models.length > 0) setSelectedModel(models[0].name)
 
       localStorage.setItem("gemini_api_key", apiKey) // local API Key
-      
     } catch (err) {
       setError(err instanceof Error ? err.message : "API Key 验证失败 / API Key verification failed.")
       setIsKeyVerified(false)
@@ -614,115 +892,115 @@ export default function NervosIntelAnalyzer() {
     }
   }
 
-// V1 prompts
-//   const runAiAnalysis = async () => {
-//     if (!apiKey || !data) return
+  // V1 prompts
+  //   const runAiAnalysis = async () => {
+  //     if (!apiKey || !data) return
 
-//     setAiLoading(true)
-//     setAiAnalysis("")
+  //     setAiLoading(true)
+  //     setAiAnalysis("")
 
-//     const postsSummary = data.posts.slice(0, 40).map((p) => ({
-//       floor: p.floor,
-//       author: p.author,
-//       tags: p.author_tags,
-//       content: p.content.slice(0, 400),
-//       likes: p.likes,
-//       liked_by: p.liked_by.slice(0, 8),
-//     }))
+  //     const postsSummary = data.posts.slice(0, 40).map((p) => ({
+  //       floor: p.floor,
+  //       author: p.author,
+  //       tags: p.author_tags,
+  //       content: p.content.slice(0, 400),
+  //       likes: p.likes,
+  //       liked_by: p.liked_by.slice(0, 8),
+  //     }))
 
-//     const prompt = `You are an expert forum discussion analyst. Analyze this Nervos blockchain community discussion.
+  //     const prompt = `You are an expert forum discussion analyst. Analyze this Nervos blockchain community discussion.
 
-// **Topic**: ${data.topic}
-// **URL**: ${data.url}
+  // **Topic**: ${data.topic}
+  // **URL**: ${data.url}
 
-// **Discussion Data**:
-// ${JSON.stringify(postsSummary, null, 2)}
+  // **Discussion Data**:
+  // ${JSON.stringify(postsSummary, null, 2)}
 
-// IMPORTANT: You MUST provide your analysis in STRICT bilingual format. For EACH section, write the English version FIRST, then immediately follow with the Chinese translation.
+  // IMPORTANT: You MUST provide your analysis in STRICT bilingual format. For EACH section, write the English version FIRST, then immediately follow with the Chinese translation.
 
-// Format example:
-// ## 1. Core Controversy Summary
-// [English analysis here]
+  // Format example:
+  // ## 1. Core Controversy Summary
+  // [English analysis here]
 
-// 核心争议总结
-// [Chinese translation here]
+  // 核心争议总结
+  // [Chinese translation here]
 
-// ---
+  // ---
 
-// Please analyze in this exact format:
+  // Please analyze in this exact format:
 
-// ## 1. Core Controversy Summary
-// [Your English analysis]
+  // ## 1. Core Controversy Summary
+  // [Your English analysis]
 
-// 核心争议总结
-// [Your Chinese translation]
+  // 核心争议总结
+  // [Your Chinese translation]
 
-// ---
+  // ---
 
-// ## 2. Pro Arguments
-// [Your English analysis]
+  // ## 2. Pro Arguments
+  // [Your English analysis]
 
-// 支持方观点
-// [Your Chinese translation]
+  // 支持方观点
+  // [Your Chinese translation]
 
-// ---
+  // ---
 
-// ## 3. Con Arguments
-// [Your English analysis]
+  // ## 3. Con Arguments
+  // [Your English analysis]
 
-// 反对方观点
-// [Your Chinese translation]
+  // 反对方观点
+  // [Your Chinese translation]
 
-// ---
+  // ---
 
-// ## 4. Camp Analysis (Based on liked_by data)
-// [Your English analysis]
+  // ## 4. Camp Analysis (Based on liked_by data)
+  // [Your English analysis]
 
-// 阵营分析（基于点赞数据）
-// [Your Chinese translation]
+  // 阵营分析（基于点赞数据）
+  // [Your Chinese translation]
 
-// ---
+  // ---
 
-// ## 5. Key Stakeholder Positions (Admins/Mods)
-// [Your English analysis]
+  // ## 5. Key Stakeholder Positions (Admins/Mods)
+  // [Your English analysis]
 
-// 核心利益方立场（管理员/版主）
-// [Your Chinese translation]
+  // 核心利益方立场（管理员/版主）
+  // [Your Chinese translation]
 
-// ---
+  // ---
 
-// ## 6. Discussion Health Assessment
-// [Your English analysis]
+  // ## 6. Discussion Health Assessment
+  // [Your English analysis]
 
-// 讨论健康度评估
-// [Your Chinese translation]`
+  // 讨论健康度评估
+  // [Your Chinese translation]`
 
-//     try {
-//       const response = await fetch(
-//         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
-//         {
-//           method: "POST",
-//           headers: { "Content-Type": "application/json" },
-//           body: JSON.stringify({
-//             contents: [{ parts: [{ text: prompt }] }],
-//           }),
-//         },
-//       )
+  //     try {
+  //       const response = await fetch(
+  //         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
+  //         {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify({
+  //             contents: [{ parts: [{ text: prompt }] }],
+  //           }),
+  //         },
+  //       )
 
-//       if (!response.ok) {
-//         const errorText = await response.text()
-//         throw new Error(`API Error ${response.status}: ${errorText}`)
-//       }
+  //       if (!response.ok) {
+  //         const errorText = await response.text()
+  //         throw new Error(`API Error ${response.status}: ${errorText}`)
+  //       }
 
-//       const result = await response.json()
-//       const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
-//       setAiAnalysis(text)
-//     } catch (err) {
-//       setAiAnalysis(`Error: ${err.message}`)
-//     } finally {
-//       setAiLoading(false)
-//     }
-//   }
+  //       const result = await response.json()
+  //       const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
+  //       setAiAnalysis(text)
+  //     } catch (err) {
+  //       setAiAnalysis(`Error: ${err.message}`)
+  //     } finally {
+  //       setAiLoading(false)
+  //     }
+  //   }
 
   const runAiAnalysis = async () => {
     if (!apiKey || !data) return
@@ -733,14 +1011,13 @@ export default function NervosIntelAnalyzer() {
     const postsSummary = data.posts.slice(0, 1000).map((p) => ({
       floor: p.floor,
       author: p.author,
-      date: p.created_at, 
-      is_admin_mod: p.author_tags.some(t => ["Admin", "Mod"].includes(t)),
+      date: p.created_at,
+      is_admin_mod: p.author_tags.some((t) => ["Admin", "Mod"].includes(t)),
       content: p.content.slice(0, 50000), // Content Length
       likes: p.likes,
-      liked_by: p.liked_by || []
+      liked_by: p.liked_by || [],
     }))
 
-   
     const prompt = `You are an expert data analyst specializing in blockchain community governance. Analyze the provided JSON discussion data.
 
 **Context**:
@@ -758,6 +1035,10 @@ ${JSON.stringify(postsSummary, null, 2)}
 3. **TIMELINE ACCURACY**: Use the 'date' field in the JSON to determine the actual duration of the discussion.
 4. **BILINGUAL**: Provide the analysis in English first, followed immediately by Chinese.
 
+**OUTPUT FORMAT REQUIREMENT (CRITICAL)**:
+You must output TWO parts separated by a specific delimiter "|||JSON_DATA|||".
+
+**PART 1: The Markdown Report**
 **Analysis Format**:
 
 ## 1. Proposal Facts & Executive Summary / 提案事实与核心摘要
@@ -793,10 +1074,19 @@ ${JSON.stringify(postsSummary, null, 2)}
 ## 5. Discussion Atmosphere & Health / 讨论氛围与健康度
 [Analyze if the discussion is constructive or toxic. Mention if admins/mods intervened.]
 [Chinese Translation]
+
+**PART 2: User Personas (JSON)**
+After the report, output the delimiter "|||JSON_DATA|||", followed strictly by a JSON object mapping usernames to a **single sentence summary (under 20 words)** of their stance or persona in this specific discussion. Use the predominant language of the thread (or Chinese).
+Format:
+{
+  "username1": "Strongly supports the proposal citing liquidity needs.",
+  "username2": "Skeptical about the budget and questions the team's history.",
+  "sonami": "Proposal author, defending the technical architecture."
+}
 `
 
     try {
-      // 动态使用 selectedModel
+      // selectedModel
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
         {
@@ -805,8 +1095,8 @@ ${JSON.stringify(postsSummary, null, 2)}
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
-                temperature: 0.2, 
-            }
+              temperature: 0.2,
+            },
           }),
         },
       )
@@ -817,8 +1107,31 @@ ${JSON.stringify(postsSummary, null, 2)}
       }
 
       const result = await response.json()
-      const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response"
-      setAiAnalysis(text)
+      const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || "No response" // obtain content
+
+      // 1.Split content
+      const parts = rawText.split("|||JSON_DATA|||")
+
+      // 2. the first part is Markdown report，to aiAnalysis
+      setAiAnalysis(parts[0].trim())
+
+      // 3. if part 2
+      if (parts.length > 1) {
+        try {
+          // data clean
+          const jsonStr = parts[1]
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim()
+
+          // to state
+          const summaries = JSON.parse(jsonStr)
+          setUserSummaries(summaries)
+        } catch (e) {
+          console.error("Failed to parse user summaries JSON", e)
+          // if error
+        }
+      }
     } catch (err) {
       setAiAnalysis(`Error: ${err instanceof Error ? err.message : String(err)}`)
     } finally {
@@ -965,8 +1278,9 @@ ${JSON.stringify(postsSummary, null, 2)}
                         to liked
                       </li>
                       <li>
-                        颜色 / Colors: 🔴红色=管理员/Admin 🟢绿色=版主/Moderator 🟡黄色=高信任用户 （基于论坛本身算法）/High Trust (Based on the forum's own algorithm)
-                        🔵蓝色=普通用户/Regular User
+                        颜色 / Colors: 🔴红色=管理员/Admin 🟢绿色=版主/Moderator 🟡黄色=高信任用户
+                        （基于论坛本身算法）/High Trust (Based on the forum's own algorithm) 🔵蓝色=普通用户/Regular
+                        User
                       </li>
                     </ul>
                   </div>
@@ -1037,7 +1351,6 @@ ${JSON.stringify(postsSummary, null, 2)}
                 </button>
               )}
             </div>
-
           </CardContent>
         </Card>
 
@@ -1075,13 +1388,16 @@ ${JSON.stringify(postsSummary, null, 2)}
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-white">
                   <Sparkles className="w-5 h-5 text-purple-400" />
-                  AI Analysis / AI 分析 ⚠️ AI may make mistakes / AI 可能会出错 ⚠️ 
+                  AI Analysis / AI 分析 ⚠️ AI may make mistakes / AI 可能会出错 ⚠️
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <label className="block text-sm text-white">Google Gemini API Key （输入后，点击Verify获取模型列表 After entering the API Key, click Verify to get the model list.）</label>
-                  
+                  <label className="block text-sm text-white">
+                    Google Gemini API Key （输入后，点击Verify获取模型列表 After entering the API Key, click Verify to
+                    get the model list.）
+                  </label>
+
                   {/* API Key input window + buttons */}
                   <div className="flex gap-2">
                     <div className="relative flex-1">
@@ -1096,7 +1412,7 @@ ${JSON.stringify(postsSummary, null, 2)}
                         }}
                         className="bg-slate-900/50 border-slate-600 text-white placeholder:text-slate-500 w-full pr-8"
                       />
-                      
+
                       {apiKey && (
                         <button
                           onClick={handleClearKey}
@@ -1112,15 +1428,17 @@ ${JSON.stringify(postsSummary, null, 2)}
                       onClick={verifyApiKey}
                       disabled={!apiKey || verifying}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                        isKeyVerified 
-                          ? "bg-green-600/20 text-green-400 border border-green-600/50 cursor-default" 
+                        isKeyVerified
+                          ? "bg-green-600/20 text-green-400 border border-green-600/50 cursor-default"
                           : "bg-slate-700 hover:bg-slate-600 text-white"
                       }`}
                     >
                       {verifying ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : isKeyVerified ? (
-                        <>Verified <Sparkles className="w-3 h-3" /></>
+                        <>
+                          Verified <Sparkles className="w-3 h-3" />
+                        </>
                       ) : (
                         "Verify / 验证"
                       )}
@@ -1130,22 +1448,25 @@ ${JSON.stringify(postsSummary, null, 2)}
                   {/* 模型选择下拉框 (仅在验证通过后显示) */}
                   {isKeyVerified && availableModels.length > 0 && (
                     <div className="animate-in fade-in slide-in-from-top-2 pt-2">
-                       <label className="block text-xs text-slate-400 mb-1.5">Select AI Model / 选择模型版本</label>
-                       <select 
-                         value={selectedModel}
-                         onChange={(e) => setSelectedModel(e.target.value)}
-                         className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-all hover:border-slate-500"
-                       >
-                         {availableModels.map((model) => (
-                           <option key={model.name} value={model.name} className="bg-slate-800 text-slate-200">
-                             {model.displayName} ({model.name})
-                           </option>
-                         ))}
-                       </select>
-                       <p className="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
-                         <Info className="w-3 h-3" /> 
-                         <span>如使用Pro模型，API需已开通支付功能，且可能带来费用 / If using the Pro model, the API must be enabled for payment, and there may be associated cost.</span>
-                       </p>
+                      <label className="block text-xs text-slate-400 mb-1.5">Select AI Model / 选择模型版本</label>
+                      <select
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-all hover:border-slate-500"
+                      >
+                        {availableModels.map((model) => (
+                          <option key={model.name} value={model.name} className="bg-slate-800 text-slate-200">
+                            {model.displayName} ({model.name})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
+                        <Info className="w-3 h-3" />
+                        <span>
+                          如使用Pro模型，API需已开通支付功能，且可能带来费用 / If using the Pro model, the API must be
+                          enabled for payment, and there may be associated cost.
+                        </span>
+                      </p>
                     </div>
                   )}
 
@@ -1170,7 +1491,7 @@ ${JSON.stringify(postsSummary, null, 2)}
                 >
                   {aiLoading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" /> 
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       正在深入分析... / Analyzing Deeply...
                     </span>
                   ) : (
@@ -1180,7 +1501,7 @@ ${JSON.stringify(postsSummary, null, 2)}
                     </span>
                   )}
                 </button>
-                
+
                 {aiAnalysis && (
                   <div className="mt-4 p-6 bg-slate-900/90 border border-slate-700 rounded-xl shadow-inner shadow-black/50 animate-in fade-in zoom-in-95">
                     {/* Text Render*/}
@@ -1221,13 +1542,14 @@ ${JSON.stringify(postsSummary, null, 2)}
                     <span className="w-3 h-3 rounded-full bg-teal-400"></span> Mod
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-yellow-400"></span> LV3+ (论坛本身算法/Forum's own algorithm)
+                    <span className="w-3 h-3 rounded-full bg-yellow-400"></span> LV3+ (论坛本身算法/Forum's own
+                    algorithm)
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-full bg-blue-300"></span> Others
                   </span>
                 </div>
-                <NetworkGraph data={data} />
+                <NetworkGraph data={data} userSummaries={userSummaries} />
               </CardContent>
             </Card>
 
