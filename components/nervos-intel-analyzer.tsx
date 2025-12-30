@@ -49,19 +49,44 @@ const analyzeUserWeight = (post) => {
 }
 
 // Network Graph Component using D3
-const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Record<string, string> }) => {
+// 1. add showAdminRoles 
+const NetworkGraph = ({ 
+  data, 
+  userSummaries, 
+  showAdminRoles 
+}: { 
+  data: any; 
+  userSummaries?: Record<string, string>; 
+  showAdminRoles: boolean 
+}) => {
   const svgRef = useRef(null)
   const containerRef = useRef(null)
-  // hover to show AI card
   const [hoveredNode, setHoveredNode] = useState<{ id: string; summary?: string } | null>(null)
 
+  // 2. showAdminRoles to button
   useEffect(() => {
     if (!data?.posts?.length || !svgRef.current) return
 
     const width = containerRef.current?.clientWidth || 800
     const height = 500
 
-    // ... (1. data Prepare) ...
+    // --- 3. color ---
+    const getNodeColor = (d: any) => {
+      // model 1: equal (close) - blue
+      if (!showAdminRoles) {
+        return "#60a5fa" // Blue-400
+      }
+
+      // Model 2: role (open)
+      if (d.isAdmin) return "#ef4444"       // 🔴 Red-500 (Admin)
+      if (d.isMod) return "#22c55e"         // 🟢 Green-500 (Mod)
+      if (d.trustLevel >= 3) return "#facc15" // 🟡 Yellow-400 (High Trust / LV3+)
+      
+      // Normal user
+      return "#60a5fa" // 🔵 Blue-400 (Regular)
+    }
+
+    // --- Data Processing ---
     const userMap = new Map()
     const links = []
 
@@ -101,8 +126,8 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
 
     const nodes = Array.from(userMap.values())
     const d3Links = links.map((d) => ({ ...d }))
-    // ... (data pre end) ...
 
+    // --- D3 Drawing ---
     d3.select(svgRef.current).selectAll("*").remove()
 
     const svg = d3
@@ -121,19 +146,10 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
 
     const simulation = d3
       .forceSimulation(nodes)
-      .force(
-        "link",
-        d3
-          .forceLink(d3Links)
-          .id((d: any) => d.id)
-          .distance(120),
-      )
+      .force("link", d3.forceLink(d3Links).id((d: any) => d.id).distance(120))
       .force("charge", d3.forceManyBody().strength(-400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force(
-        "collision",
-        d3.forceCollide().radius((d: any) => 15 + Math.min(d.posts * 2 + d.receivedLikes, 30)),
-      )
+      .force("collision", d3.forceCollide().radius((d: any) => 15 + Math.min(d.posts * 2 + d.receivedLikes, 30)))
 
     const link = g
       .append("g")
@@ -166,9 +182,8 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
     node
       .append("circle")
       .attr("r", (d: any) => 8 + Math.min(d.posts * 2 + d.receivedLikes, 20))
-      .attr("fill", (d: any) =>
-        d.isAdmin ? "#ff6b6b" : d.isMod ? "#4ecdc4" : d.trustLevel >= 3 ? "#ffe66d" : "#a8dadc",
-      )
+      // 4. 正确应用颜色函数
+      .attr("fill", (d: any) => getNodeColor(d)) 
       .attr("stroke", "#1e293b")
       .attr("stroke-width", 2)
 
@@ -183,11 +198,10 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
       .style("pointer-events", "none")
       .style("text-shadow", "1px 1px 2px #000")
 
-    // ---interaction ---
+    // --- Interactions ---
     const isConnected = (a: any, b: any) => d3Links.some((l) => l.source.id === a.id && l.target.id === b.id)
 
     const fade = (opacity: number) => (event: any, d: any) => {
-      // 1. React State for AI card
       if (opacity === 1) {
         setHoveredNode(null)
       } else {
@@ -197,13 +211,15 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
         })
       }
 
-      // 2. D3 vision
       if (opacity === 1) {
         node.style("opacity", 1)
         link.style("stroke-opacity", 0.4).attr("stroke", "#64b5f6")
         arrow.attr("opacity", 0.6).attr("fill", "#64b5f6")
         return
       }
+      // Hover 时的 Spotlight 效果：
+      // 被关注的节点 + 连接它的节点 = 不透明
+      // 其他节点 = 透明度 0.1
       node.style("opacity", (o: any) => (o.id === d.id || isConnected(o, d) ? 1 : 0.1))
       link
         .style("stroke-opacity", (o: any) => (o.target.id === d.id ? 1 : 0.05))
@@ -254,12 +270,11 @@ const NetworkGraph = ({ data, userSummaries }: { data: any; userSummaries?: Reco
     }
 
     return () => simulation.stop()
-  }, [data, userSummaries])
+  }, [data, userSummaries, showAdminRoles])
 
   return (
     <div ref={containerRef} className="w-full h-full relative">
       <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
-
       {/* AI Card */}
       {hoveredNode && userSummaries && userSummaries[hoveredNode.id] && (
         <div className="absolute bottom-4 left-4 max-w-[300px] z-10 animate-in fade-in slide-in-from-bottom-2">
@@ -355,6 +370,7 @@ export default function NervosIntelAnalyzer() {
   const [sortBy, setSortBy] = useState("floor")
   const [filterRole, setFilterRole] = useState("all")
   const [expandedPost, setExpandedPost] = useState(null)
+  const [showAdminRoles, setShowAdminRoles] = useState(false) // default close
   const [progressMessages, setProgressMessages] = useState<string[]>([])
   const [userSummaries, setUserSummaries] = useState<Record<string, string>>({})
 
@@ -795,9 +811,22 @@ ${JSON.stringify(postsSummary, null, 2)}
 **Critical Instructions (STRICTLY FOLLOW)**:
 1. **NO HALLUCINATIONS**: Only use facts explicitly stated in the JSON data. Do not invent dates, events, or external project histories (e.g., if the text doesn't mention a 3-year history, do not say it).
 2. **CITATION STYLE**: When quoting a user or referencing a specific argument, **YOU MUST** append the floor number in parentheses, e.g., *"UserA argued that... (Floor 12)"*.
-3. **WEIGHTING**: When identifying "Camps" or "Key Opinions", prioritize users with high engagement (likes) or detailed arguments. **Do NOT** list a user as a representative of a major camp if they only posted one short, low-effort sentence.
 3. **TIMELINE ACCURACY**: Use the 'date' field in the JSON to determine the actual duration of the discussion.
 4. **BILINGUAL**: Provide the analysis in English first, followed immediately by Chinese.
+
+**5. WEIGHTING & QUALITY METRICS (CORE LOGIC)**:
+- **Argument Quality > Identity**: Do NOT judge based on user Trust Level or Title. An LV0 user with data is worth more than an Admin with just an opinion.
+- **High-Value Signals**: Give higher visibility to posts that contain:
+  * **On-chain Data**: Citing transaction hashes, address activity, or hashrate charts.
+  * **Historical Context**: Referencing past proposals (e.g., "See RFC-0023").
+  * **Verifiable Risks**: Pointing out specific code flaws or economic attack vectors.
+  * **Logical Completeness**: Structuring arguments with clear premises and conclusions.
+- **Low-Value Signals**: Downweight emotional vents, blind agreement ("LFG", "Agree"), or ad hominem attacks.
+
+**6. IDENTITY BLINDNESS**: 
+- **Do NOT** refer to users by their titles (e.g., "Admin UserX") in the argument analysis. Treat them simply as "UserX".
+- **Independent Voices**: Specifically look for and highlight logical, independent opinions from non-core team members (non-proposal team, non-Admins/Mods)..
+
 
 **OUTPUT FORMAT REQUIREMENT (CRITICAL)**:
 You must output TWO parts separated by a specific delimiter "|||JSON_DATA|||".
@@ -824,7 +853,7 @@ You must output TWO parts separated by a specific delimiter "|||JSON_DATA|||".
 ---
 
 ## 3. Key Arguments & Camps / 核心观点与阵营
-[Identify the Pro/Con sides. **Only cite users who provided substantial arguments**. Note their credibility based on likes.**Cite Floor Numbers**.]
+[Identify the Pro/Con sides. **Prioritize users who provided Evidence/Data (as defined in instruction #5)**. If a fresh/low-LV user made a great point, Highlight them.**Cite Floor Numbers**.]
 [Chinese Translation]
 
 ---
@@ -836,11 +865,12 @@ You must output TWO parts separated by a specific delimiter "|||JSON_DATA|||".
 ---
 
 ## 5. Discussion Atmosphere & Health / 讨论氛围与健康度
-[Analyze if the discussion is constructive or toxic. Mention if admins/mods intervened.]
+[Analyze if the discussion is constructive or toxic. Only mention Admins/Mods if they actively intervened (e.g., warnings, closures) to maintain order; otherwise, do not mention their presence.]
 [Chinese Translation]
 
 **PART 2: User Personas (JSON)**
 After the report, output the delimiter "|||JSON_DATA|||", followed strictly by a JSON object mapping usernames to a **single sentence summary (under 20 words)** of their stance or persona in this specific discussion. Use English.
+**CRITICAL**: The summary must focus on their **ARGUMENT** (e.g., "Cites on-chain data to oppose...") or **BEHAVIOR**, strictly excluding their role/title (e.g., do NOT say "An admin who...").
 Format:
 {
   "username1": "Strongly supports the proposal citing liquidity needs.",
@@ -966,117 +996,130 @@ Format:
         </header>
 
         {showInstructions && (
-          <Card className="mb-6 bg-gradient-to-br from-slate-800/95 to-slate-900/95 border-slate-600/50 backdrop-blur-sm">
-            <CardHeader>
+          <Card className="mb-8 bg-gradient-to-br from-slate-900/95 to-slate-950/95 border-slate-700/50 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
+            <CardHeader className="border-b border-slate-800/50 pb-4">
               <div className="flex items-start justify-between">
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Info className="w-5 h-5 text-blue-400" />
-                  使用说明 / How to Use
+                <CardTitle className="flex items-center gap-2 text-white text-xl">
+                  <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <Info className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <span>使用说明 / How to Use</span>
                 </CardTitle>
                 <button
                   onClick={() => setShowInstructions(false)}
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <strong className="text-white block">1. 输入论坛链接</strong>
-                <strong className="text-slate-300 block text-sm">Enter Forum URL</strong>
-                <p className="text-slate-100 mt-1">
-                  粘贴 Nervos Talk 帖子链接，例如: https://talk.nervos.org/t/topic-name/12345
-                </p>
-                <p className="text-slate-300 text-sm">
-                  Paste Nervos Talk topic link, e.g.: https://talk.nervos.org/t/topic-name/12345
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <strong className="text-white block">2. 分析数据</strong>
-                <strong className="text-slate-300 block text-sm">Analyze Data</strong>
-                <p className="text-slate-100 mt-1">
-                  点击"分析 Analyze"按钮，系统将自动抓取所有帖子、点赞关系和用户信息
-                </p>
-                <p className="text-slate-300 text-sm">
-                  Click "Analyze" button, the system will automatically fetch all posts, likes, and user information
-                </p>
-                <p className="text-yellow-300 text-xs mt-1">⚠️ 注意：为避免请求限流，获取点赞数据会较慢，请耐心等待</p>
-                <p className="text-yellow-200 text-xs">
-                  ⚠️ Note: To avoid rate limiting, fetching likes data will be slow, please be patient
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <strong className="text-white block">3. AI 深度分析（可选）</strong>
-                <strong className="text-slate-300 block text-sm">AI Deep Analysis (Optional)</strong>
-                <p className="text-slate-100 mt-1">
-                  在下方 API Key 输入框中填入你的 <strong className="text-blue-300">Google Gemini API Key</strong>
-                </p>
-                <p className="text-slate-300 text-sm">
-                  Enter your <strong className="text-blue-300">Google Gemini API Key</strong> in the input box below
-                </p>
-                <p className="text-xs text-slate-300 mt-1">
-                  获取 API Key / Get API Key:{" "}
-                  <a
-                    href="https://aistudio.google.com/apikey"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline text-blue-300 hover:text-blue-200"
-                  >
-                    https://aistudio.google.com/apikey
-                  </a>
-                </p>
-                <p className="text-slate-100 mt-1">然后点击"运行 AI 分析"按钮，将使用 Gemini 模型进行争议分析</p>
-                <p className="text-slate-300 text-sm">
-                  Then click "Run AI Analysis" button to use Gemini model for controversy analysis
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <strong className="text-white block">4. 查看可视化</strong>
-                <strong className="text-slate-300 block text-sm">View Visualizations</strong>
-                <div className="mt-2 space-y-2">
-                  <div className="ml-4">
-                    <p className="text-slate-100">
-                      <strong className="text-white">Network 社交网络图：</strong>展示用户点赞关系网络
-                    </p>
-                    <p className="text-slate-300 text-sm">
-                      <strong className="text-slate-100">Network Graph:</strong> Shows user like relationship network
-                    </p>
-                    <ul className="list-disc list-inside ml-4 mt-1 space-y-0.5 text-slate-300 text-sm">
-                      <li>节点（圆点）= 用户，大小代表活跃度 / Nodes = Users, size represents activity</li>
-                      <li>
-                        连线（箭头）= 点赞关系，箭头从点赞者指向被点赞者 / Links = Like relationships, arrow from liker
-                        to liked
-                      </li>
-                      <li>
-                        颜色 / Colors: 🔴红色=管理员/Admin 🟢绿色=版主/Moderator 🟡黄色=高信任用户
-                        （基于论坛本身算法）/High Trust (Based on the forum's own algorithm) 🔵蓝色=普通用户/Regular
-                        User
-                      </li>
-                    </ul>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-slate-100">
-                      <strong className="text-white">Timeline 时间线：</strong>显示帖子发布和点赞随时间的分布
-                    </p>
-                    <p className="text-slate-300 text-sm">
-                      <strong className="text-slate-100">Timeline:</strong> Shows posts and likes distribution over time
-                    </p>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-slate-100">
-                      <strong className="text-white">Posts 帖子列表：</strong>可按楼层、点赞数、阅读量排序，支持角色筛选
-                    </p>
-                    <p className="text-slate-300 text-sm">
-                      <strong className="text-slate-100">Posts List:</strong> Sort by floor, likes, reads; filter by
-                      role
-                    </p>
-                  </div>
+            <CardContent className="space-y-6 pt-6">
+              
+              {/* Step 1: Input */}
+              <div className="grid grid-cols-[auto_1fr] gap-4">
+                <div className="flex flex-col items-center">
+                   <div className="w-8 h-8 rounded-full bg-blue-900/30 text-blue-400 flex items-center justify-center font-bold border border-blue-500/30">1</div>
+                   <div className="w-0.5 h-full bg-slate-800 mt-2"></div>
+                </div>
+                <div className="pb-2">
+                   <h3 className="text-white font-medium text-lg">输入论坛链接 / Enter URL</h3>
+                   <p className="text-slate-400 text-sm mt-1">
+                     粘贴 Nervos Talk 帖子链接 (Paste link): <br/>
+                     <code className="bg-slate-950 px-2 py-0.5 rounded text-blue-300 font-mono text-xs select-all">https://talk.nervos.org/t/topic/12345</code>
+                   </p>
                 </div>
               </div>
+
+              {/* Step 2: Analyze */}
+              <div className="grid grid-cols-[auto_1fr] gap-4">
+                <div className="flex flex-col items-center">
+                   <div className="w-8 h-8 rounded-full bg-blue-900/30 text-blue-400 flex items-center justify-center font-bold border border-blue-500/30">2</div>
+                   <div className="w-0.5 h-full bg-slate-800 mt-2"></div>
+                </div>
+                <div className="pb-2">
+                   <h3 className="text-white font-medium text-lg">获取数据 / Fetch Data</h3>
+                   <p className="text-slate-400 text-sm mt-1">
+                     点击 <strong className="text-blue-400">Analyze</strong>，系统将抓取所有楼层与点赞数据。
+                   </p>
+                   <div className="flex items-start gap-2 mt-2 bg-yellow-900/10 border border-yellow-700/30 p-2 rounded text-xs text-yellow-200/80">
+                      <span className="text-yellow-500 text-base">⚠️</span>
+                      <span>
+                        点赞数据获取较慢（防限流），请耐心等待。<br/>
+                        Fetching likes is slow to avoid rate limits, please wait.
+                      </span>
+                   </div>
+                </div>
+              </div>
+
+              {/* Step 3: AI Analysis */}
+              <div className="grid grid-cols-[auto_1fr] gap-4">
+                <div className="flex flex-col items-center">
+                   <div className="w-8 h-8 rounded-full bg-purple-900/30 text-purple-400 flex items-center justify-center font-bold border border-purple-500/30">3</div>
+                   <div className="w-0.5 h-full bg-slate-800 mt-2"></div>
+                </div>
+                <div className="pb-2">
+                   <h3 className="text-white font-medium text-lg flex items-center gap-2">
+                     AI 深度分析 / AI Analysis 
+                     <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Core Feature</span>
+                   </h3>
+                   <p className="text-slate-400 text-sm mt-1">
+                     输入 <a href="https://aistudio.google.com/apikey" target="_blank" className="text-blue-400 hover:underline">Gemini API Key</a> 并运行。
+                   </p>
+                   <ul className="list-disc list-inside ml-2 mt-2 space-y-1 text-slate-300 text-sm">
+                      <li><strong className="text-purple-300">Click-to-Verify:</strong> 报告中的引用 <code className="text-xs bg-slate-800 px-1 rounded">(Floor X)</code> 可点击跳转原帖。</li>
+                      <li><strong className="text-purple-300">Identity Blindness:</strong> AI 仅基于逻辑和证据分析，忽略用户头衔。</li>
+                   </ul>
+                </div>
+              </div>
+
+              {/* Step 4: Visualization (Updated) */}
+              <div className="grid grid-cols-[auto_1fr] gap-4">
+                <div className="flex flex-col items-center">
+                   <div className="w-8 h-8 rounded-full bg-green-900/30 text-green-400 flex items-center justify-center font-bold border border-green-500/30">4</div>
+                </div>
+                <div>
+                   <h3 className="text-white font-medium text-lg">交互式图谱 / Interactive Graph</h3>
+                   <div className="mt-2 space-y-3 bg-slate-800/40 p-3 rounded-lg border border-slate-700/50">
+                      
+                      {/* AI Persona Feature */}
+                      <div>
+                        <p className="text-white text-sm font-bold flex items-center gap-2">
+                           🤖 AI Persona / AI 画像
+                           <span className="text-[10px] bg-blue-500 text-white px-1.5 rounded">NEW</span>
+                        </p>
+                        <p className="text-slate-400 text-xs mt-1">
+                           Hover over any node to see an AI-generated summary of their stance.<br/>
+                           <span className="text-slate-500">鼠标悬停在节点上，即可查看 AI 对该用户立场的“一句话总结”。</span>
+                        </p>
+                      </div>
+
+                      <div className="w-full h-px bg-slate-700/50"></div>
+
+                      {/* View Modes */}
+                      <div>
+                        <p className="text-white text-sm font-bold">👁️ View Modes / 视角模式</p>
+                        <ul className="mt-1 space-y-1.5">
+                           <li className="text-xs text-slate-300 flex items-start gap-2">
+                              <span className="bg-blue-500/20 text-blue-300 px-1 rounded border border-blue-500/30 whitespace-nowrap">Default</span>
+                              <span>
+                                 <strong>Equal Mode (平权模式):</strong> Nodes are blue. Size = Activity. No hierarchy colors.<br/>
+                                 <span className="text-slate-500">全员蓝色，大小代表活跃度，隐藏身份以避免光环效应。</span>
+                              </span>
+                           </li>
+                           <li className="text-xs text-slate-300 flex items-start gap-2">
+                              <span className="bg-purple-500/20 text-purple-300 px-1 rounded border border-purple-500/30 whitespace-nowrap">Toggle</span>
+                              <span>
+                                 <strong>Reveal Roles (揭示身份):</strong> Highlight 🔴Admin, 🟢Mod, 🟡LV3+.<br/>
+                                 <span className="text-slate-500">手动开启后高亮显示管理层与资深用户。</span>
+                              </span>
+                           </li>
+                        </ul>
+                      </div>
+
+                   </div>
+                </div>
+              </div>
+
             </CardContent>
           </Card>
         )}
@@ -1285,45 +1328,94 @@ Format:
               </CardContent>
             </Card>
 
-            <Card className="mb-8 bg-slate-800/70 border-slate-700">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
+<Card className="mb-8 bg-slate-800/70 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                {/* 标题部分 */}
+                <CardTitle className="flex items-center gap-2 text-white text-xl">
                   <Network className="w-5 h-5 text-blue-400" />
                   Network / 关系网络
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-3 text-sm text-slate-300 space-y-1">
-                  <p>🕸️ Like Relationship Network / 点赞关系网络 • Drag to move, scroll to zoom / 拖拽移动，滚轮缩放</p>
-                </div>
-                <div className="mb-3 p-3 bg-slate-900/50 rounded text-sm text-slate-200">
-                  <p>
-                    <strong className="text-blue-300">节点大小含义: / Node Size Meaning:</strong>
-                  </p>
-                  <p className="mt-1">反映活跃度（发帖数 + 收到的赞）/ Reflects activity (Posts + Received Likes)</p>
 
-                  <p>
-                    <strong className="text-blue-300">连线含义 / Link Meaning:</strong>
-                  </p>
-                  <p className="mt-1">箭头从点赞者指向被点赞者 / Arrow points from liker to the liked person</p>
-                  <p className="text-slate-400 text-xs mt-1">例如: A → B 表示用户 A 点赞了用户 B 的帖子</p>
+                {/* 👇👇👇 新增：视角切换开关 (Mode Switch) 👇👇👇 */}
+                <div className="flex items-center gap-2 bg-slate-900/50 p-1.5 rounded-lg border border-slate-700/50">
+                  <span className="text-xs text-slate-400 font-medium px-1">
+                    Mode:
+                  </span>
+                  <button
+                    onClick={() => setShowAdminRoles(false)}
+                    className={`px-3 py-1 text-xs rounded-md transition-all font-medium ${
+                      !showAdminRoles 
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" 
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    }`}
+                  >
+                    Equal / 平权
+                  </button>
+                  <button
+                    onClick={() => setShowAdminRoles(true)}
+                    className={`px-3 py-1 text-xs rounded-md transition-all font-medium ${
+                      showAdminRoles 
+                        ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20" 
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    }`}
+                  >
+                    Reveal Roles / 揭示身份
+                  </button>
                 </div>
-                <div className="flex gap-4 text-xs mb-3 text-slate-300">
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-red-400"></span> Admin
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-teal-400"></span> Mod
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-yellow-400"></span> LV3+ (论坛本身算法/Forum's own
-                    algorithm)
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-blue-300"></span> Others
+              </CardHeader>
+              
+              <CardContent>
+                <div className="mb-4 text-sm text-slate-400 flex items-center gap-2 bg-slate-900/30 p-2 rounded border border-slate-700/30">
+                  <span className="text-blue-400">💡</span> 
+                  <span>
+                    Drag nodes to move, scroll to zoom. Hover to see AI Personas (If AI analysis applied). <br/>
+                    拖拽节点移动，滚轮缩放。悬停查看 AI 画像 （如果使用了AI分析）。
                   </span>
                 </div>
-                <NetworkGraph data={data} userSummaries={userSummaries} />
+
+                {/* 👇👇👇 Dynamic Legend 👇👇👇 */}
+                <div className="flex flex-wrap gap-4 text-xs mb-4 text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                   <div className="flex items-center gap-2 mr-4 border-r border-slate-700 pr-4">
+                      <span className="font-bold text-slate-400">Size/大小:</span>
+                      <span>Posts + Likes (Influence/影响力)</span>
+                   </div>
+
+                   {/* equal model */}
+                   {!showAdminRoles && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-[#60a5fa] border border-slate-600"></span> 
+                        <span>Community Member / 社区成员</span>
+                      </span>
+                   )}
+
+                   {/* Role model */}
+                   {showAdminRoles && (
+                    <>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-red-500 border border-slate-600 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></span> 
+                        <span className="font-medium text-red-200">Admin</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-green-500 border border-slate-600 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span> 
+                        <span className="font-medium text-green-200">Mod</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-yellow-400 border border-slate-600 shadow-[0_0_8px_rgba(250,204,21,0.5)]"></span> 
+                        <span className="font-medium text-yellow-200">LV3+ (High Trust, Based Platform Algorithm)</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-blue-400 border border-slate-600"></span> 
+                        <span>Regular</span>
+                      </span>
+                    </>
+                   )}
+                </div>
+
+                <NetworkGraph 
+                    data={data} 
+                    userSummaries={userSummaries} 
+                    showAdminRoles={showAdminRoles} 
+                />
               </CardContent>
             </Card>
 
