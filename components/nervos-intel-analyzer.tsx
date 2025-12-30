@@ -1001,7 +1001,7 @@ Format:
               <div className="flex items-start justify-between">
                 <CardTitle className="flex items-center gap-2 text-white text-xl">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <Info className="w-5 h-5 text-blue-400" />
+                    <Info className="w-5 h-2 text-blue-400" />
                   </div>
                   <span>使用说明 / How to Use</span>
                 </CardTitle>
@@ -1039,13 +1039,13 @@ Format:
                 <div className="pb-2">
                    <h3 className="text-white font-medium text-lg">获取数据 / Fetch Data</h3>
                    <p className="text-slate-400 text-sm mt-1">
-                     点击 <strong className="text-blue-400">Analyze</strong>，系统将抓取所有楼层与点赞数据。
+                     Click <strong className="text-blue-400">Analyze</strong>，for all floors data。
                    </p>
                    <div className="flex items-start gap-2 mt-2 bg-yellow-900/10 border border-yellow-700/30 p-2 rounded text-xs text-yellow-200/80">
                       <span className="text-yellow-500 text-base">⚠️</span>
                       <span>
-                        点赞数据获取较慢（防限流），请耐心等待。<br/>
-                        Fetching likes is slow to avoid rate limits, please wait.
+                        点赞数据获取较慢（防限流）。<br/>
+                        Fetching likes is slow to avoid rate limits.
                       </span>
                    </div>
                 </div>
@@ -1063,11 +1063,11 @@ Format:
                      <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Core</span>
                    </h3>
                    <p className="text-slate-400 text-sm mt-1">
-                     输入 <a href="https://aistudio.google.com/apikey" target="_blank" className="text-blue-400 hover:underline">Gemini API Key</a> 并运行。
+                     Input <a href="https://aistudio.google.com/apikey" target="_blank" className="text-blue-400 hover:underline">Gemini API Key</a>.
                    </p>
                    <ul className="list-disc list-inside ml-2 mt-2 space-y-1 text-slate-300 text-sm">
-                      <li><strong className="text-purple-300">Click-to-Verify:</strong> 报告中的引用 <code className="text-xs bg-slate-800 px-1 rounded">(Floor X)</code> 可点击跳转原帖。</li>
-                      <li><strong className="text-purple-300">Identity Blindness:</strong> AI 仅基于逻辑和证据分析，忽略用户头衔。</li>
+                      <li><strong className="text-purple-300">Click-to-Verify:</strong> Citation <code className="text-xs bg-slate-800 px-1 rounded">(Floor X)</code>.</li>
+                      <li><strong className="text-purple-300">Identity Blindness:</strong> AI based on evidence，ignore title。</li>
                    </ul>
                 </div>
               </div>
