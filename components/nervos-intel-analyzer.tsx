@@ -1060,7 +1060,7 @@ Format:
                 <div className="pb-2">
                    <h3 className="text-white font-medium text-lg flex items-center gap-2">
                      AI 深度分析 / AI Analysis 
-                     <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Core Feature</span>
+                     <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30">Core</span>
                    </h3>
                    <p className="text-slate-400 text-sm mt-1">
                      输入 <a href="https://aistudio.google.com/apikey" target="_blank" className="text-blue-400 hover:underline">Gemini API Key</a> 并运行。
