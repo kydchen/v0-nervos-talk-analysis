@@ -1,163 +1,84 @@
-# 🧠 Nervos Intel Analyzer / Nervos 社区情报分析器
+# 🧠 Nervos Intel Analyzer
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Tech](https://img.shields.io/badge/tech-Next.js%20%7C%20D3.js%20%7C%20Gemini-purple)
-![License](https://img.shields.io/badge/license-MIT-green)
+> **A Computational Social Science Experiment in DAO Governance.**
+>
+> Transforming raw discussion data into structured insights, visual topologies, and verifiable facts.
 
-A professional governance intelligence tool designed for the Nervos CKB community. It visualizes discussion threads, maps social influence networks, and uses Google Gemini AI to generate objective, deep-dive summaries of governance proposals.
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Stack](https://img.shields.io/badge/tech-Next.js%20%7C%20D3.js%20%7C%20Gemini%20AI-purple)
 
-专为 Nervos CKB 社区设计的治理情报分析工具。它通过可视化手段展示讨论热度与时间线，绘制用户社交影响力图谱，并利用 Google Gemini AI 生成客观、深度的治理提案分析报告。
+## 📖 Overview / 简介
 
----
+**Nervos Intel Analyzer** is an AI-powered governance auxiliary tool designed for the Nervos CKB community. It tackles the challenge of "Information Overload" in DAO governance by parsing long forum threads into high-fidelity summaries and interactive social graphs.
+
+This tool is **NOT** a decision-maker; it is an **"Intelligence Staff Officer" (情报参谋)**. It helps community members verify facts, visualize influence structures, and lower the cognitive barrier to entry.
 
 ## ✨ Key Features / 核心功能
 
-* **🕷️ Data Crawler / 数据抓取**: Automatically fetches all posts, likes, and user metadata from any Nervos Talk topic URL.
-* **🕸️ Social Graph / 社交图谱**: Interactive D3.js visualization showing community interactions (Likes) and user influence weights.
-* **🤖 AI Deep Analysis / AI 深度分析**:
-    * **Dynamic Model Selection**: Support for Gemini models.
-    * **Objective Summary**: Anti-hallucination protocols and neutrality enforcement.
-    * **Controversy Mining**: Deep dive into core conflicts and unresolved questions.
-* **📊 Timeline & Stats / 数据统计**: Interactive charts for engagement over time and role distribution (Admin/Mod/User).
-* **💾 Open Data / 开放数据**: One-click export of the full raw dataset to JSON.
+### 🤖 1. Bias-Resistant AI Analysis (抗偏见 AI 分析)
+* **Cognitive Decoupling**: The AI engine is engineered with **"Identity Blindness"**. It evaluates arguments strictly based on logic and evidence (e.g., on-chain data, historical RFCs), explicitly ignoring user titles (Admin/Mod) during the analysis phase.
+* **Role Scoping**: Administrative titles are only mentioned if specific moderation actions (e.g., thread locking) occurred.
+* **Click-to-Verify**: Every AI claim is anchored with a smart citation `(Floor X)`. Click to jump directly to the original post. **"Don't Trust, Verify."**
 
----
+### 🕸️ 2. Social Graph 2.0 (交互式社交图谱)
+* **AI Personas (God Mode)**: Hover over any node to see an **AI-generated Persona Card**. It summarizes that user's stance in one sentence (e.g., *"Skeptical about budget due to lack of technical details"*).
+* **Equal Mode (Default)**: Visualizes the community under a "Veil of Ignorance". All nodes are unified in blue; size reflects activity only. This nudges observers to judge influence by engagement, not status.
+* **Reveal Roles Toggle**: Optional mode to overlay administrative hierarchy (🔴 Admin, 🟢 Mod) for power structure auditing.
+* **Spotlight Interaction**: Hovering dims noise and highlights the user's **"Influence Network"** (incoming likes) in gold.
 
-## 🏗️ Project Structure / 项目结构
+### 📊 3. Deep Integration
+* **Timeline Analysis**: Temporal distribution of posts and sentiments.
+* **Raw Data Access**: Full access to the raw post list with role labels for manual verification.
 
-The project is built with **Next.js 14** (App Router) and **React**.
+## 🛠️ Design Philosophy / 设计哲学
 
-```bash
-.
-├── app/
-│   ├── api/proxy/route.ts       # 核心后端代理 (Core Proxy for CORS bypass)
-│   ├── page.tsx                 # 主入口 (Main Entry)
-│   └── layout.tsx               # 全局布局 (Global Layout)
-├── components/
-│   ├── nervos-intel-analyzer.tsx # 核心应用逻辑 (The Brain: UI, State, Logic)
-│   └── ui/                      # Shadcn UI 组件库 (UI Components)
-└── public/                      # 静态资源 (Static Assets)
+This tool implements concepts from **Behavioral Economics** and **Political Philosophy** to foster rational deliberation:
 
-```
+1.  **Nudging (Thaler & Sunstein)**: By defaulting the graph to "Equal Mode", we nudge users away from the "Halo Effect" of high-level titles.
+2.  **Information Hierarchy**: 
+    * *Layer 1 (Synthesis)*: AI Report (Logic & Arguments)
+    * *Layer 2 (Perception)*: Social Graph (Topology & Influence)
+    * *Layer 3 (Verification)*: Raw Post List (Context & Reputation)
+3.  **Human-in-the-Loop**: AI is used to quantify qualitative metrics (like "Inclusion"), but the human user always retains final judgment.
 
----
-
-## 🔧 Technical Implementation / 技术实现细节
-
-### 1. Data Fetching Strategy (Crawler) / 爬虫实现逻辑
-
-**File**: `app/api/proxy/route.ts` & `components/nervos-intel-analyzer.tsx`
-
-The browser cannot fetch data directly from `talk.nervos.org` due to **CORS (Cross-Origin Resource Sharing)** restrictions. We implemented a **Server-Side Proxy**:
-
-1. **Proxy Route**: The frontend sends the target URL to `/api/proxy?url=...`.
-2. **Server-Side Fetch**: The Next.js server (Node.js environment) fetches the data from Nervos Talk (bypassing CORS).
-3. **Pagination Handling**:
-* First, we fetch the Topic JSON to get the `stream` (list of all post IDs).
-* We slice the IDs into chunks (e.g., 20 posts per chunk) and fetch them in parallel/series to reconstruct the full discussion.
-
-
-4. **Rate Limiting Protection**: We implemented strictly timed delays (e.g., 50-100ms) between requests to prevent triggering `429 Too Many Requests` errors from the forum server.
-
-### 2. Social Graph Visualization / 社交图谱实现
-
-**File**: `components/nervos-intel-analyzer.tsx` (Component: `NetworkGraph`)
-
-We use **D3.js** to render a Force-Directed Graph:
-
-* **Nodes (Users)**:
-* **Size**: Calculated dynamically based on `BaseSize + (Posts * 2) + ReceivedLikes`. This visually represents "Activity Weight".
-* **Color**: Determined by role priority (Admin > Mod > Trust Level > User).
-
-
-* **Links (Relationships)**:
-* Represent a "Like" action. Direction is **Liker -> Liked Author**.
-
-
-* **Simulation**: Uses `d3.forceSimulation` with collision detection to prevent overlap and charge forces to spread the graph naturally.
-
-### 3. AI Analysis & Prompt Engineering / AI 分析与提示词工程
-
-**File**: `components/nervos-intel-analyzer.tsx` (Function: `runAiAnalysis`)
-
-We use **Google Gemini API**. The core value lies in our "Governance-First" Prompt Engineering design:
-
-#### 🧠 Prompt Logic (提示词逻辑):
-
-We explicitly **reject** sentiment scoring to avoid biasing the user. Instead, we focus on:
-
-1. **Anti-Hallucination (防幻觉)**: Strict instruction: *"Only use facts explicitly stated in the JSON data."*
-2. **Weighted Opinions (权重判断)**: *"Prioritize users with high engagement (likes). Do NOT list a user as a representative of a major camp if they only posted one short sentence."* This prevents noise from drowning out signal.
-3. **Conflict Mining (争议挖掘)**: Instead of just listing pros/cons, we ask the AI to identify the underlying **Logical Clashes** (e.g., "Ideological conflict: Web5 vs. Traditional Bridges").
-4. **Unresolved Risks (待澄清风险)**: Specifically asking for questions that the team failed to answer.
-
-**Sample Prompt Snippet:**
-
-```text
-Critical Instructions (STRICTLY FOLLOW):
-1. NO HALLUCINATIONS: Do not invent dates or events.
-2. WEIGHTING: Prioritize users with high engagement.
-3. BILINGUAL: English first, then Chinese.
-...
-## 4. Unresolved Questions & Risks
-[What questions asked by the community remain unanswered?]
-
-```
-
----
-
-## 🚀 Getting Started / 快速开始
+## 🚀 Getting Started
 
 ### Prerequisites
-
 * Node.js 18+
-* A Google Gemini API Key ([Get it here](https://aistudio.google.com/apikey))
+* A Google Gemini API Key ([Get one here](https://aistudio.google.com/apikey))
 
 ### Installation
 
-1. **Clone the repo**
-```bash
-git clone [https://github.com/your-username/v0-nervos-talk-analysis.git](https://github.com/your-username/v0-nervos-talk-analysis.git)
-cd v0-nervos-talk-analysis
+1.  **Clone the repository**
+    ```bash
+    git clone [https://github.com/your-username/nervos-intel-analyzer.git](https://github.com/your-username/nervos-intel-analyzer.git)
+    cd nervos-intel-analyzer
+    ```
 
-```
+2.  **Install dependencies**
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
+3.  **Run the development server**
+    ```bash
+    npm run dev
+    ```
 
-2. **Install dependencies**
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
+4.  Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-```
+## 🤝 Contribution
 
+Contributions are welcome! We are especially interested in:
+* **Reputation Algorithms**: Exploring decentralized reputation metrics (Social Capital dimensions).
+* **LLM Prompts**: Refining the "Identity Blindness" instructions.
+* **Visualizations**: New D3.js views for governance data.
 
-3. **Run Development Server**
-```bash
-npm run dev
+## 📜 License
 
-```
-
-
-4. **Open Browser**
-Visit `http://localhost:3000`
-
----
-
-## 🤝 Contribution / 贡献
-
-We welcome contributions! Specifically in:
-
-* Improving the D3.js visualization algorithms.
-* Refining AI Prompts for different types of governance proposals (Budget vs. Technical).
-* Adding support for more forum platforms (Like, TG or Discourse-based).
-
-## 📄 License
-
-This project is licensed under the MIT License.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-*Built with ❤️ for the Nervos CKB Community.*
+> Built with ❤️ for the CKB Community.
