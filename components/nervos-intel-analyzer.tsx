@@ -21,6 +21,7 @@ import {
   Download,
   Trash2,
   Github,
+  ExternalLink,
 } from "lucide-react"
 import * as d3 from "d3"
 import { Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart } from "recharts"
@@ -71,6 +72,22 @@ const NetworkGraph = ({
     const height = 500
 
     // --- 3. color ---
+    // const getNodeColor = (d: any) => {
+    //   // model 1: equal (close) - blue
+    //   if (!showAdminRoles) {
+    //     return "#60a5fa" // Blue-400
+    //   }
+
+    //   // Model 2: role (open)
+    //   if (d.isAdmin) return "#ef4444"       // 🔴 Red-500 (Admin)
+    //   if (d.isMod) return "#22c55e"         // 🟢 Green-500 (Mod)
+    //   if (d.trustLevel >= 3) return "#facc15" // 🟡 Yellow-400 (High Trust / LV3+)
+      
+    //   // Normal user
+    //   return "#60a5fa" // 🔵 Blue-400 (Regular)
+    // }
+    // ... inside NetworkGraph component ...
+
     const getNodeColor = (d: any) => {
       // model 1: equal (close) - blue
       if (!showAdminRoles) {
@@ -80,11 +97,17 @@ const NetworkGraph = ({
       // Model 2: role (open)
       if (d.isAdmin) return "#ef4444"       // 🔴 Red-500 (Admin)
       if (d.isMod) return "#22c55e"         // 🟢 Green-500 (Mod)
-      if (d.trustLevel >= 3) return "#facc15" // 🟡 Yellow-400 (High Trust / LV3+)
       
-      // Normal user
-      return "#60a5fa" // 🔵 Blue-400 (Regular)
+      // Trust Levels
+      if (d.trustLevel >= 3) return "#facc15" // 🟡 Yellow-400 (L3+)
+      if (d.trustLevel === 2) return "#3b82f6" // 🔵 Blue-500 (L2)
+      if (d.trustLevel === 1) return "#94a3b8" // ⚪ Slate-400 (L1)
+      
+      // LV0 / Visitor
+      return "#475569" // ⚫ Slate-600 (L0)
     }
+
+
 
     // --- Data Processing ---
     const userMap = new Map()
@@ -294,18 +317,75 @@ const NetworkGraph = ({
 
 // Post Card Component
 const PostCard = ({ post, expanded, onToggle }) => {
+  // const getBadge = () => {
+  //   if (post.author_tags.includes("Admin")) return { icon: Crown, color: "text-red-400 bg-red-900/30", label: "Admin" }
+  //   if (post.author_tags.includes("Mod")) return { icon: Shield, color: "text-teal-400 bg-teal-900/30", label: "Mod" }
+  //   if (post.author_tags.some((tag) => tag.startsWith("LV"))) {
+  //     return {
+  //       icon: Star,
+  //       color: "text-yellow-400 bg-yellow-900/30",
+  //       label: post.author_tags.find((tag) => tag.startsWith("LV")),
+  //     }
+  //   }
+  //   return { icon: User, color: "text-blue-400 bg-blue-900/30", label: "LV0" }
+  // }
   const getBadge = () => {
-    if (post.author_tags.includes("Admin")) return { icon: Crown, color: "text-red-400 bg-red-900/30", label: "Admin" }
-    if (post.author_tags.includes("Mod")) return { icon: Shield, color: "text-teal-400 bg-teal-900/30", label: "Mod" }
-    if (post.author_tags.some((tag) => tag.startsWith("LV"))) {
-      return {
-        icon: Star,
-        color: "text-yellow-400 bg-yellow-900/30",
-        label: post.author_tags.find((tag) => tag.startsWith("LV")),
+    // 1. Admin (Red)
+    if (post.author_tags?.includes("Admin")) {
+      return { 
+        icon: Crown, 
+        color: "text-red-400 bg-red-900/30", 
+        label: "Admin" 
       }
     }
-    return { icon: User, color: "text-blue-400 bg-blue-900/30", label: "LV0" }
+    
+    // 2. Mod (Green)
+    if (post.author_tags?.includes("Mod")) {
+      return { 
+        icon: Shield, 
+        color: "text-teal-400 bg-teal-900/30", 
+        label: "Mod" 
+      }
+    }
+
+    // 3. Trust Levels (post.author_trust_level)
+    const tl = post.author_trust_level
+    
+    // LV3+ (GLD - Lv+3 Star)
+    if (tl >= 3) {
+      return { 
+        icon: Star, 
+        color: "text-yellow-400 bg-yellow-900/30", 
+        label: `LV${tl}` 
+      }
+    }
+    
+    // LV2 (Blue)
+    if (tl === 2) {
+      return { 
+        icon: User, 
+        color: "text-blue-400 bg-blue-900/30", 
+        label: "LV2" 
+      }
+    }
+
+    // LV1 (Gray Blue)
+    if (tl === 1) {
+      return { 
+        icon: User, 
+        color: "text-slate-300 bg-slate-800/50", 
+        label: "LV1" 
+      }
+    }
+    
+    // LV0 / Default (Gray)
+    return { 
+      icon: User, 
+      color: "text-slate-500 bg-slate-900/30", 
+      label: "LV0" 
+    }
   }
+
 
   const badge = getBadge()
   const BadgeIcon = badge.icon
@@ -1106,13 +1186,57 @@ Format:
                                  <span className="text-slate-500">全员蓝色，大小代表活跃度，隐藏身份以避免光环效应。</span>
                               </span>
                            </li>
+
                            <li className="text-xs text-slate-300 flex items-start gap-2">
-                              <span className="bg-purple-500/20 text-purple-300 px-1 rounded border border-purple-500/30 whitespace-nowrap">Toggle</span>
-                              <span>
-                                 <strong>Reveal Roles (揭示身份):</strong> Highlight 🔴Admin, 🟢Mod, 🟡LV3+.<br/>
-                                 <span className="text-slate-500">手动开启后高亮显示管理层与资深用户。</span>
-                              </span>
-                           </li>
+                              <span className="bg-purple-500/20 text-purple-300 px-1 rounded border border-purple-500/30 whitespace-nowrap mt-0.5">Toggle</span>
+                              <div className="flex-1 space-y-2">
+                                {/* 1. 身份图例 (根据新逻辑更新颜色) */}
+                                <div>
+                                  <strong className="text-white">Reveal Roles (揭示身份):</strong>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-slate-300 font-mono text-[11px]">
+                                    <span className="flex items-center gap-1.5" title="Administrator">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Admin
+                                    </span>
+                                    <span className="flex items-center gap-1.5" title="Moderator">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Mod
+                                    </span>
+                                    <span className="flex items-center gap-1.5" title="Trust Level 3+">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> LV3+
+                                    </span>
+                                    <span className="flex items-center gap-1.5" title="Trust Level 2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> LV2
+                                    </span>
+                                    <span className="flex items-center gap-1.5" title="Trust Level 1">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span> LV1
+                                    </span>
+                                    <span className="flex items-center gap-1.5" title="Trust Level 0 / Visitor">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span> LV0
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* 2. 信任等级说明 (叠甲部分) */}
+                                <div className="text-xs text-blue-200/90 bg-blue-950/40 rounded p-2 border border-blue-500/20 flex flex-col gap-1.5">
+                                    <div className="flex items-start gap-2">
+                                        <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-blue-400" />
+                                        <div className="leading-relaxed">
+                                            <p>Normally, Trust Levels (LV) are assigned automatically based on engagement.</p>
+                                            <p className="text-blue-300/70 mt-0.5">通常情况下，信任等级 (LV) 会根据互动情况自动分配。</p>
+                                        </div>
+                                    </div>
+                                    <a 
+                                      href="https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/" 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-blue-400 hover:text-white transition-colors underline flex items-center gap-1 ml-5 self-start"
+                                    >
+                                      Learn more <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                </div>
+                              </div>
+                            </li>  
+
+
                         </ul>
                       </div>
 
@@ -1328,7 +1452,7 @@ Format:
               </CardContent>
             </Card>
 
-<Card className="mb-8 bg-slate-800/70 border-slate-700">
+            <Card className="mb-8 bg-slate-800/70 border-slate-700">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 {/* 标题部分 */}
                 <CardTitle className="flex items-center gap-2 text-white text-xl">
@@ -1401,15 +1525,38 @@ Format:
                       </span>
                       <span className="flex items-center gap-1.5">
                         <span className="w-3 h-3 rounded-full bg-yellow-400 border border-slate-600 shadow-[0_0_8px_rgba(250,204,21,0.5)]"></span> 
-                        <span className="font-medium text-yellow-200">LV3+ (High Trust, Based Platform Algorithm)</span>
+                        <span className="font-medium text-yellow-200">LV3+</span>
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full bg-blue-400 border border-slate-600"></span> 
-                        <span>Regular</span>
+                        <span className="w-3 h-3 rounded-full bg-blue-500"></span> 
+                        <span className="text-blue-200">LV2</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-slate-400"></span> 
+                        <span className="text-slate-300">LV1</span>
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-slate-600"></span> 
+                        <span className="text-slate-500">LV0</span>
                       </span>
                     </>
                    )}
                 </div>
+
+                {showAdminRoles && (
+                     <div className="text-sm text-blue-200 flex items-center gap-1 pt-1 border-t border-slate-800/50 mt-1">
+                        <Info className="w-3 h-3" />
+                        <span>Normally, Trust Levels (LV) are assigned automatically based on engagement. / 通常情况下，信任等级 (LV) 会根据互动情况自动分配。</span>
+                        <a 
+                          href="https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 underline flex items-center gap-0.5 ml-1"
+                        >
+                          Learn more <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                     </div>
+                   )}
 
                 <NetworkGraph 
                     data={data} 
