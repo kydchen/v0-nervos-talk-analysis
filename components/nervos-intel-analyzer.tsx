@@ -767,12 +767,49 @@ export default function NervosIntelAnalyzer() {
     }
   }
 
+  // const handleDownloadJson = () => {
+  //   if (!data) return
+
+  //   const dateStr = new Date().toISOString().split("T")[0]
+  //   const topicId = url.match(/\/t\/[^/]+\/(\d+)/)?.[1] || "unknown"
+  //   const fileName = `nervos-talk-analysis-${topicId}-${dateStr}.json`
+
+  //   const jsonString = JSON.stringify(data, null, 2)
+  //   const blob = new Blob([jsonString], { type: "application/json" })
+
+  //   const link = document.createElement("a")
+  //   link.href = URL.createObjectURL(blob)
+  //   link.download = fileName
+  //   document.body.appendChild(link)
+  //   link.click()
+  //   document.body.removeChild(link)
+  // }
+
   const handleDownloadJson = () => {
     if (!data) return
 
     const dateStr = new Date().toISOString().split("T")[0]
-    const topicId = url.match(/\/t\/[^/]+\/(\d+)/)?.[1] || "unknown"
-    const fileName = `nervos-talk-analysis-${topicId}-${dateStr}.json`
+    
+    // 1. decode data.url  or url 
+    const targetUrl = data.url || url
+    let filePrefix = "discourse-analysis" 
+    let topicId = "unknown"
+
+    try {
+      const urlObj = new URL(targetUrl)
+      
+      filePrefix = urlObj.hostname.replace(/\./g, "-")
+
+      const parts = urlObj.pathname.split('/')
+      const tIndex = parts.indexOf('t')
+      if (tIndex !== -1 && parts.length > tIndex + 2) {
+        topicId = parts[tIndex + 2]
+      }
+    } catch (e) {
+      console.warn("Failed to parse URL for filename", e)
+    }
+
+    const fileName = `${filePrefix}-topic-${topicId}-${dateStr}.json`
 
     const jsonString = JSON.stringify(data, null, 2)
     const blob = new Blob([jsonString], { type: "application/json" })
