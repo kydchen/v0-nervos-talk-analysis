@@ -49,22 +49,22 @@ This tool implements concepts from **Behavioral Economics** and **Political Phil
 ### Installation
 
 1.  **Clone the repository**
-    ```bash
+    \`\`\`bash
     git clone [https://github.com/your-username/nervos-intel-analyzer.git](https://github.com/your-username/nervos-intel-analyzer.git)
     cd nervos-intel-analyzer
-    ```
+    \`\`\`
 
 2.  **Install dependencies**
-    ```bash
+    \`\`\`bash
     npm install
     # or
     yarn install
-    ```
+    \`\`\`
 
 3.  **Run the development server**
-    ```bash
+    \`\`\`bash
     npm run dev
-    ```
+    \`\`\`
 
 4.  Open [http://localhost:3000](http://localhost:3000) with your browser.
 
