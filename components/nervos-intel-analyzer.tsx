@@ -615,16 +615,21 @@ export default function NervosIntelAnalyzer() {
     setProgressMessages([])
 
     try {
-      const topicIdMatch = url.match(/\/t\/[^/]+\/(\d+)/)
-      if (!topicIdMatch) throw new Error("Invalid URL format")
-      const topicId = topicIdMatch[1]
+      // const topicIdMatch = url.match(/\/t\/[^/]+\/(\d+)/)
+      // if (!topicIdMatch) throw new Error("Invalid URL format")
+      // const topicId = topicIdMatch[1]
+      const parsed = parseDiscourseUrl(url)
+      if (!parsed) throw new Error("Invalid URL format. Please use a valid Discourse topic link.")
+      const { domain, topicId } = parsed
 
       const addProgress = (msg: string) => {
         setProgressMessages((prev) => [...prev.slice(-2), msg])
       }
 
       addProgress("正在获取帖子信息... / Fetching topic info...")
-      const topicRes = await fetch(`/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/t/${topicId}.json`)}`)
+
+      // const topicRes = await fetch(`/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/t/${topicId}.json`)}`)
+      const topicRes = await fetch(`/api/proxy?url=${encodeURIComponent(`${domain}/t/${topicId}.json`)}`)
       if (!topicRes.ok) throw new Error(`Failed to fetch topic: ${topicRes.status}`)
       const topicData = await topicRes.json()
 
@@ -648,8 +653,12 @@ export default function NervosIntelAnalyzer() {
           `[v0] Fetching chunk ${i / CHUNK_SIZE + 1}: posts ${i + 1}-${Math.min(i + CHUNK_SIZE, allPostIds.length)}`,
         )
 
+        // const postsRes = await fetch(
+        //   `/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/t/${topicId}/posts.json?${postIdsParam}`)}`,
+        // )
+
         const postsRes = await fetch(
-          `/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/t/${topicId}/posts.json?${postIdsParam}`)}`,
+          `/api/proxy?url=${encodeURIComponent(`${domain}/t/${topicId}/posts.json?${postIdsParam}`)}`,
         )
         if (!postsRes.ok) {
           console.error(`[v0] Failed to fetch chunk: ${postsRes.status}`)
@@ -689,8 +698,11 @@ export default function NervosIntelAnalyzer() {
         if (post.likes > 0) {
           addProgress(`#${post.floor} 获得 ${post.likes} 个赞 / #${post.floor} with ${post.likes} likes`)
           try {
+            // const likesRes = await fetch(
+            //   `/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/post_action_users.json?id=${post.id}&post_action_type_id=2`)}`,
+            // )
             const likesRes = await fetch(
-              `/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/post_action_users.json?id=${post.id}&post_action_type_id=2`)}`,
+              `/api/proxy?url=${encodeURIComponent(`${domain}/post_action_users.json?id=${post.id}&post_action_type_id=2`)}`,
             )
             if (likesRes.ok) {
               const likesData = await likesRes.json()
