@@ -687,8 +687,11 @@ export default function NervosIntelAnalyzer() {
         //   `/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/t/${topicId}/posts.json?${postIdsParam}`)}`,
         // )
 
-        const postsRes = await fetch(
+        const postsRes = await fetchWithRetry(
           `/api/proxy?url=${encodeURIComponent(`${domain}/t/${topicId}/posts.json?${postIdsParam}`)}`,
+          {}, 
+          5, // 5 times
+          3000 // 3s
         )
         if (!postsRes.ok) {
           console.error(`[v0] Failed to fetch chunk: ${postsRes.status}`)
