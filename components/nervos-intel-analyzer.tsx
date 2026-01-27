@@ -29,8 +29,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import Image from "next/image" // Added Image import
 
-// Constants
-const BASE_HOST = "https://talk.nervos.org"
+// // Constants
+// const BASE_HOST = "https://talk.nervos.org"
+// --- Helper: 解析 Discourse URL ---
+// 支持格式:
+// https://talk.nervos.org/t/topic-name/12345
+// https://forum.arbitrum.foundation/t/topic-name/12345/42
+const parseDiscourseUrl = (inputUrl: string) => {
+  try {
+    const urlObj = new URL(inputUrl.trim())
+    const domain = urlObj.origin // 提取 https://forum.arbitrum.foundation
+    
+    // 路径通常是 /t/slug/id/floor
+    const parts = urlObj.pathname.split('/')
+    
+    // 找到 't' 所在的位置，ID 通常在 't' 后面第二个
+    // 例如 ['', 't', 'slug', '12345', ...]
+    const tIndex = parts.indexOf('t')
+    
+    if (tIndex === -1 || parts.length <= tIndex + 2) {
+      return null
+    }
+
+    const topicId = parts[tIndex + 2] // 提取 12345
+
+    // 简单验证 ID 是否为数字
+    if (!/^\d+$/.test(topicId)) {
+        return null
+    }
+
+    return { domain, topicId }
+  } catch (e) {
+    console.error("Invalid URL", e)
+    return null
+  }
+}
 
 // Utility functions
 const cleanHtml = (html) => {
