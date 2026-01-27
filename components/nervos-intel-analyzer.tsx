@@ -700,7 +700,7 @@ export default function NervosIntelAnalyzer() {
         const postsData = await postsRes.json()
         console.log(`[v0] Received ${postsData.post_stream.posts.length} posts in this chunk`)
         allPosts.push(...postsData.post_stream.posts)
-        await new Promise((resolve) => setTimeout(resolve, 200))
+        await new Promise((resolve) => setTimeout(resolve, 800)) //initial 200
       }
 
       console.log(`[v0] Total posts fetched: ${allPosts.length}`)
@@ -734,8 +734,11 @@ export default function NervosIntelAnalyzer() {
             // const likesRes = await fetch(
             //   `/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/post_action_users.json?id=${post.id}&post_action_type_id=2`)}`,
             // )
-            const likesRes = await fetch(
+            const likesRes = await fetchWithRetry(
               `/api/proxy?url=${encodeURIComponent(`${domain}/post_action_users.json?id=${post.id}&post_action_type_id=2`)}`,
+              {},
+              3,   //
+              2000 //
             )
             if (likesRes.ok) {
               const likesData = await likesRes.json()
@@ -744,7 +747,7 @@ export default function NervosIntelAnalyzer() {
           } catch (err) {
             console.error(`Failed to fetch likes for post ${post.id}:`, err)
           }
-          await new Promise((resolve) => setTimeout(resolve, 50))
+          await new Promise((resolve) => setTimeout(resolve,400)) //from 50 to 400
         }
       }
 
