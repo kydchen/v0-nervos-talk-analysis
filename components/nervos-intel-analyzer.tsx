@@ -658,7 +658,8 @@ export default function NervosIntelAnalyzer() {
       addProgress("正在获取帖子信息... / Fetching topic info...")
 
       // const topicRes = await fetch(`/api/proxy?url=${encodeURIComponent(`https://talk.nervos.org/t/${topicId}.json`)}`)
-      const topicRes = await fetch(`/api/proxy?url=${encodeURIComponent(`${domain}/t/${topicId}.json`)}`)
+      // const topicRes = await fetch(`/api/proxy?url=${encodeURIComponent(`${domain}/t/${topicId}.json`)}`)
+      const topicRes = await fetchWithRetry(`/api/proxy?url=${encodeURIComponent(`${domain}/t/${topicId}.json`)}`)
       if (!topicRes.ok) throw new Error(`Failed to fetch topic: ${topicRes.status}`)
       const topicData = await topicRes.json()
 
