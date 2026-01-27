@@ -32,32 +32,61 @@ import Image from "next/image" // Added Image import
 // // Constants
 // const BASE_HOST = "https://talk.nervos.org"
 // --- Helper: docode Discourse URL ---
-// like:
-// https://talk.nervos.org/t/topic-name/12345
-// https://forum.arbitrum.foundation/t/topic-name/12345/42
+// const parseDiscourseUrl = (inputUrl: string) => {
+//   try {
+//     const urlObj = new URL(inputUrl.trim())
+//     const domain = urlObj.origin 
+//     const parts = urlObj.pathname.split('/')
+//     const tIndex = parts.indexOf('t')
+//     if (tIndex === -1 || parts.length <= tIndex + 2) {
+//       return null
+//     }
+//     const topicId = parts[tIndex + 2] 
+//     if (!/^\d+$/.test(topicId)) {
+//         return null
+//     }
+//     return { domain, topicId }
+//   } catch (e) {
+//     console.error("Invalid URL", e)
+//     return null
+//   }
+// }
+
 const parseDiscourseUrl = (inputUrl: string) => {
   try {
     const urlObj = new URL(inputUrl.trim())
-    const domain = urlObj.origin 
-    
-    const parts = urlObj.pathname.split('/')
-    
-    const tIndex = parts.indexOf('t')
-    
-    if (tIndex === -1 || parts.length <= tIndex + 2) {
-      return null
-    }
-
-    const topicId = parts[tIndex + 2] 
-
-    if (!/^\d+$/.test(topicId)) {
-        return null
-    }
-
+    const domain = urlObj.origin
+    const parts = urlObj.pathname.split("/")
+    const tIndex = parts.indexOf("t")
+    if (tIndex === -1 || parts.length <= tIndex + 2) return null
+    const topicId = parts[tIndex + 2]
+    if (!/^\d+$/.test(topicId)) return null
     return { domain, topicId }
   } catch (e) {
-    console.error("Invalid URL", e)
     return null
+  }
+}
+
+const fetchWithRetry = async (url: string, options: any = {}, retries = 3, backoff = 2000) => {
+  try {
+    const res = await fetch(url, options)
+
+    if (res.ok) return res
+
+    if (res.status === 429 && retries > 0) {
+      console.warn(`[429 Detected] Retrying in ${backoff}ms... (${retries} retries left)`)
+      await new Promise((resolve) => setTimeout(resolve, backoff))
+      // (2s -> 4s -> 8s)
+      return fetchWithRetry(url, options, retries - 1, backoff * 2)
+    }
+
+    throw new Error(`API Error ${res.status}: ${res.statusText}`)
+  } catch (err) {
+    if (retries > 0) {
+      await new Promise((resolve) => setTimeout(resolve, backoff))
+      return fetchWithRetry(url, options, retries - 1, backoff * 2)
+    }
+    throw err
   }
 }
 
