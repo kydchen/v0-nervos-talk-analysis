@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   Network,
   BarChart3,
   AlertTriangle,
+  AlertCircle,
   ThumbsUp,
   Eye,
   Crown,
@@ -91,7 +92,7 @@ const fetchWithRetry = async (url: string, options: any = {}, retries = 3, backo
 }
 
 // Utility functions
-const cleanHtml = (html) => {
+const cleanHtml = (html: any) => {
   if (!html) return ""
   const div = document.createElement("div")
   div.innerHTML = html
@@ -99,7 +100,7 @@ const cleanHtml = (html) => {
   return div.textContent || div.innerText || ""
 }
 
-const analyzeUserWeight = (post) => {
+const analyzeUserWeight = (post: any) => {
   const roles = []
   if (post.admin) roles.push("Admin")
   if (post.moderator) roles.push("Mod")
@@ -118,8 +119,8 @@ const NetworkGraph = ({
   userSummaries?: Record<string, string>; 
   showAdminRoles: boolean 
 }) => {
-  const svgRef = useRef(null)
-  const containerRef = useRef(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [hoveredNode, setHoveredNode] = useState<{ id: string; summary?: string } | null>(null)
 
   // 2. showAdminRoles to button
@@ -169,9 +170,9 @@ const NetworkGraph = ({
 
     // --- Data Processing ---
     const userMap = new Map()
-    const links = []
+    const links: any[] = []
 
-    data.posts.forEach((post) => {
+    data.posts.forEach((post: any) => {
       if (!userMap.has(post.author)) {
         userMap.set(post.author, {
           id: post.author,
@@ -189,7 +190,7 @@ const NetworkGraph = ({
       if (post.author_tags?.includes("Admin")) user.isAdmin = true
       if (post.author_tags?.includes("Mod")) user.isMod = true
       if (post.author_trust_level > user.trustLevel) user.trustLevel = post.author_trust_level
-      ;(post.liked_by || []).forEach((liker) => {
+      ;(post.liked_by || []).forEach((liker: any) => {
         if (!userMap.has(liker))
           userMap.set(liker, {
             id: liker,
@@ -220,9 +221,9 @@ const NetworkGraph = ({
 
     svg.call(
       d3
-        .zoom()
+        .zoom<SVGSVGElement, unknown>()
         .scaleExtent([0.1, 4])
-        .on("zoom", (event) => g.attr("transform", event.transform)),
+        .on("zoom", (event: any) => g.attr("transform", event.transform)),
     )
 
     const simulation = d3
@@ -350,7 +351,9 @@ const NetworkGraph = ({
       fade(1)(event, d)
     }
 
-    return () => simulation.stop()
+    return () => {
+      simulation.stop()
+    }
   }, [data, userSummaries, showAdminRoles])
 
   return (
@@ -374,7 +377,7 @@ const NetworkGraph = ({
 }
 
 // Post Card Component
-const PostCard = ({ post, expanded, onToggle }) => {
+const PostCard = ({ post, expanded, onToggle }: { post: any; expanded: boolean; onToggle: () => void }) => {
   // const getBadge = () => {
   //   if (post.author_tags.includes("Admin")) return { icon: Crown, color: "text-red-400 bg-red-900/30", label: "Admin" }
   //   if (post.author_tags.includes("Mod")) return { icon: Shield, color: "text-teal-400 bg-teal-900/30", label: "Mod" }
@@ -495,7 +498,7 @@ const PostCard = ({ post, expanded, onToggle }) => {
 export default function NervosIntelAnalyzer() {
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(false)
-  const [data, setData] = useState(null)
+  const [data, setData] = useState<any>(null)
   const [apiKey, setApiKey] = useState("")
   const [aiLoading, setAiLoading] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState("")
@@ -504,13 +507,44 @@ export default function NervosIntelAnalyzer() {
   const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash") // Default Flash 2.5
   const [verifying, setVerifying] = useState(false)
   const [showInstructions, setShowInstructions] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState("floor")
   const [filterRole, setFilterRole] = useState("all")
-  const [expandedPost, setExpandedPost] = useState(null)
+  const [expandedPost, setExpandedPost] = useState<string | null>(null)
   const [showAdminRoles, setShowAdminRoles] = useState(false) // default close
   const [progressMessages, setProgressMessages] = useState<string[]>([])
   const [userSummaries, setUserSummaries] = useState<Record<string, string>>({})
+  const [latestTopics, setLatestTopics] = useState<any[]>([])
+  const [loadingTopics, setLoadingTopics] = useState(false)
+  const [topicError, setTopicError] = useState<string | null>(null)
+
+  // Fetch Latest Topics
+  const fetchLatest = useCallback(async () => {
+    setLoadingTopics(true)
+    setTopicError(null)
+    try {
+      const res = await fetch("/api/proxy?url=https://talk.nervos.org/latest.json")
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.topic_list?.topics) {
+          // Filter out pinned topics and take top 10
+          setLatestTopics(data.topic_list.topics.filter((t: any) => !t.pinned).slice(0, 10))
+        }
+      } else {
+        throw new Error("Network response was not ok")
+      }
+    } catch (e) {
+      console.error("Failed to fetch latest topics", e)
+      setTopicError("加载失败 (Load Failed)")
+    } finally {
+      setLoadingTopics(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchLatest()
+  }, [fetchLatest])
+
 
   // Read Local API Key
   useEffect(() => {
@@ -635,8 +669,16 @@ export default function NervosIntelAnalyzer() {
     )
   }
 
-  const handleAnalyze = async () => {
-    if (!url) return
+  const handleAnalyze = async (overrideUrl?: string | any) => {
+    // If it's an event object (from button click), ignore it
+    const targetUrl = typeof overrideUrl === "string" ? overrideUrl : url
+
+    if (!targetUrl) return
+    
+    // Update the URL state if it's different (for visual feedback)
+    if (targetUrl !== url) {
+      setUrl(targetUrl)
+    }
 
     setLoading(true)
     setError(null)
@@ -647,7 +689,7 @@ export default function NervosIntelAnalyzer() {
       // const topicIdMatch = url.match(/\/t\/[^/]+\/(\d+)/)
       // if (!topicIdMatch) throw new Error("Invalid URL format")
       // const topicId = topicIdMatch[1]
-      const parsed = parseDiscourseUrl(url)
+      const parsed = parseDiscourseUrl(targetUrl)
       if (!parsed) throw new Error("Invalid URL format. Please use a valid Discourse topic link.")
       const { domain, topicId } = parsed
 
@@ -674,7 +716,7 @@ export default function NervosIntelAnalyzer() {
 
       for (let i = 0; i < allPostIds.length; i += CHUNK_SIZE) {
         const chunkIds = allPostIds.slice(i, i + CHUNK_SIZE)
-        const postIdsParam = chunkIds.map((id) => `post_ids[]=${id}`).join("&")
+        const postIdsParam = chunkIds.map((id: number) => `post_ids[]=${id}`).join("&")
         addProgress(
           `正在加载帖子 ${i + 1}-${Math.min(i + CHUNK_SIZE, allPostIds.length)}... / Loading posts ${i + 1}-${Math.min(i + CHUNK_SIZE, allPostIds.length)}...`,
         )
@@ -706,7 +748,7 @@ export default function NervosIntelAnalyzer() {
       console.log(`[v0] Total posts fetched: ${allPosts.length}`)
       addProgress(`已加载 ${allPosts.length} 个帖子 / Loaded ${allPosts.length} posts`)
 
-      const posts = allPosts.map((p, idx) => ({
+      const posts = allPosts.map((p: any, idx: number) => ({
         id: p.id,
         floor: idx + 1,
         author: p.username,
@@ -720,7 +762,7 @@ export default function NervosIntelAnalyzer() {
         ],
         content: p.cooked.replace(/<[^>]*>/g, ""),
         created_at: new Date(p.created_at),
-        likes: p.actions_summary?.find((a) => a.id === 2)?.count || 0,
+        likes: p.actions_summary?.find((a: any) => a.id === 2)?.count || 0,
         reads: p.reads || 0,
         liked_by: [],
       }))
@@ -742,7 +784,7 @@ export default function NervosIntelAnalyzer() {
             )
             if (likesRes.ok) {
               const likesData = await likesRes.json()
-              post.liked_by = likesData.post_action_users?.map((u) => u.username) || []
+              post.liked_by = likesData.post_action_users?.map((u: any) => u.username) || []
             }
           } catch (err) {
             console.error(`Failed to fetch likes for post ${post.id}:`, err)
@@ -755,12 +797,12 @@ export default function NervosIntelAnalyzer() {
 
       setData({
         topic: topicData.title,
-        url,
+        url: targetUrl,
         posts,
         users: [...new Set(posts.map((p) => p.author))],
       })
     } catch (err) {
-      setError(err.message)
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
       setTimeout(() => setProgressMessages([]), 2000)
@@ -843,7 +885,7 @@ export default function NervosIntelAnalyzer() {
           name: m.name.replace("models/", ""),
           displayName: m.displayName,
         }))
-        .sort((a, b) => b.name.localeCompare(a.name))
+        .sort((a: any, b: any) => b.name.localeCompare(a.name))
 
       if (models.length === 0) {
         setAvailableModels([
@@ -982,11 +1024,11 @@ export default function NervosIntelAnalyzer() {
     setAiLoading(true)
     setAiAnalysis("")
 
-    const postsSummary = data.posts.slice(0, 1000).map((p) => ({
+    const postsSummary = data.posts.slice(0, 1000).map((p: any) => ({
       floor: p.floor,
       author: p.author,
       date: p.created_at,
-      is_admin_mod: p.author_tags.some((t) => ["Admin", "Mod"].includes(t)),
+      is_admin_mod: p.author_tags.some((t: any) => ["Admin", "Mod"].includes(t)),
       content: p.content.slice(0, 50000), // Content Length
       likes: p.likes,
       liked_by: p.liked_by || [],
@@ -1131,37 +1173,37 @@ Format:
   const stats = data
     ? {
         totalPosts: data.posts.length,
-        totalLikes: data.posts.reduce((s, p) => s + p.likes, 0),
-        participants: new Set(data.posts.map((p) => p.author)).size,
-        adminPosts: data.posts.filter((p) => p.author_tags.includes("Admin") || p.author_tags.includes("Mod")).length,
+        totalLikes: data.posts.reduce((s: number, p: any) => s + p.likes, 0),
+        participants: new Set(data.posts.map((p: any) => p.author)).size,
+        adminPosts: data.posts.filter((p: any) => p.author_tags.includes("Admin") || p.author_tags.includes("Mod")).length,
       }
     : null
 
   const timelineData = data
     ? (() => {
-        const byDate = {}
-        data.posts.forEach((p) => {
+        const byDate: Record<string, any> = {}
+        data.posts.forEach((p: any) => {
           const date = p.created_at.toISOString().split("T")[0]
           if (!byDate[date]) byDate[date] = { date, posts: 0, likes: 0 }
           byDate[date].posts++
           byDate[date].likes += p.likes
         })
-        return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
+        return Object.values(byDate).sort((a: any, b: any) => a.date.localeCompare(b.date))
       })()
     : []
 
   const anomalies =
-    data?.posts.filter((p) => (p.reads > 50 && p.likes === 0) || (p.reads > 100 && p.likes / p.reads < 0.01)) || []
+    data?.posts.filter((p: any) => (p.reads > 50 && p.likes === 0) || (p.reads > 100 && p.likes / p.reads < 0.01)) || []
 
-  const filteredPosts = data?.posts.filter((p) => {
+  const filteredPosts = data?.posts.filter((p: any) => {
     if (filterRole === "admin") return p.author_tags.includes("Admin")
     if (filterRole === "mod") return p.author_tags.includes("Mod")
-    if (filterRole === "senior") return p.author_tags.some((tag) => tag.startsWith("LV"))
+    if (filterRole === "senior") return p.author_tags.some((tag: any) => tag.startsWith("LV"))
     return true
   })
 
   const sortedPosts = filteredPosts
-    ? filteredPosts.sort((a, b) => {
+    ? filteredPosts.sort((a: any, b: any) => {
         if (sortBy === "floor") return a.floor - b.floor
         if (sortBy === "likes") return b.likes - a.likes
         if (sortBy === "reads") return b.reads - a.reads
@@ -1191,7 +1233,7 @@ Format:
 
         {showInstructions && (
           <Card className="mb-8 bg-gradient-to-br from-slate-900/95 to-slate-950/95 border-slate-700/50 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
-            <CardHeader className="border-b border-slate-800/50 pb-4">
+            <CardHeader className="border-b border-slate-800/50 pb-2">
               <div className="flex items-start justify-between">
                 <CardTitle className="flex items-center gap-2 text-white text-xl">
                   <div className="p-2 bg-blue-500/10 rounded-lg">
@@ -1203,11 +1245,11 @@ Format:
                   onClick={() => setShowInstructions(false)}
                   className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-all"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-4" />
                 </button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
+            <CardContent className="space-y-2 pt-2">
               
               {/* Step 1: Input */}
               <div className="grid grid-cols-[auto_1fr] gap-4">
@@ -1405,6 +1447,58 @@ Format:
                   <span className="hidden sm:inline">JSON</span>
                 </button>
               )}
+            </div>
+
+            {/* Latest Topics Section */}
+            <div className="pt-4 mt-2 border-t border-slate-700/50">
+               <h3 className="text-slate-300 text-sm font-medium mb-3 flex items-center gap-2">
+                 <span className="bg-green-500/10 text-green-400 text-[10px] px-1.5 py-0.5 rounded border border-green-500/20">LATEST</span>
+                 Latest Topics / 最新话题 (Auto-Load / 点击自动加载)
+               </h3>
+               
+               {topicError ? (
+                 <div className="flex items-center gap-2 text-red-400 text-sm pl-1">
+                   <AlertCircle className="w-3.5 h-3.5" />
+                   <span>{topicError}</span>
+                   <button 
+                     onClick={fetchLatest}
+                     className="ml-2 text-blue-400 hover:text-blue-300 underline"
+                   >
+                     Retry
+                   </button>
+                 </div>
+               ) : loadingTopics ? (
+                 <div className="flex items-center gap-2 text-slate-500 text-sm pl-1">
+                   <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading topics...
+                 </div>
+               ) : (
+                 <div className="grid gap-2 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                   {latestTopics.map((topic) => (
+                     <button
+                       key={topic.id}
+                       onClick={() => handleAnalyze(`https://talk.nervos.org/t/topic/${topic.id}`)}
+                       className="w-full text-left p-2.5 rounded-lg bg-slate-900/30 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/30 transition-all group relative overflow-hidden"
+                     >
+                       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-transparent group-hover:bg-blue-500 transition-colors"></div>
+                       <div className="text-slate-300 group-hover:text-blue-300 text-sm font-medium line-clamp-1 pl-1">
+                         {topic.title}
+                       </div>
+                       <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-500 pl-1">
+                         <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">ID: {topic.id}</span>
+                         <span className="flex items-center gap-1">
+                            💬 {topic.posts_count - 1}
+                         </span>
+                         <span className="flex items-center gap-1">
+                            ❤️ {topic.like_count}
+                         </span>
+                         <span className="flex items-center gap-1 ml-auto text-slate-600">
+                            {new Date(topic.created_at).toLocaleDateString()}
+                         </span>
+                       </div>
+                     </button>
+                   ))}
+                 </div>
+               )}
             </div>
           </CardContent>
         </Card>
@@ -1730,7 +1824,7 @@ Format:
                       Found {anomalies.length} high-read low-engagement posts / 发现 {anomalies.length}{" "}
                       条高阅读低互动帖子
                     </div>
-                    {anomalies.map((p) => (
+                    {anomalies.map((p: any) => (
                       <PostCard key={p.floor} post={p} expanded={false} onToggle={() => {}} />
                     ))}
                   </div>
@@ -1768,7 +1862,7 @@ Format:
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {sortedPosts.map((post) => (
+                  {sortedPosts.map((post: any) => (
                     <PostCard
                       key={post.floor}
                       post={post}

@@ -1,4 +1,27 @@
 import { type NextRequest, NextResponse } from "next/server"
+import dns from "node:dns"
+import { ProxyAgent, setGlobalDispatcher } from "undici"
+
+// 强制优先使用 IPv4，解决部分网络环境下的连接超时问题
+try {
+  if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder("ipv4first")
+  }
+} catch (e) {
+  // Ignore if not supported
+}
+
+// 自动配置代理（如果环境变量存在）
+const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
+if (proxyUrl) {
+  try {
+    const dispatcher = new ProxyAgent(proxyUrl)
+    setGlobalDispatcher(dispatcher)
+    console.log(`[v0] Proxy configured: ${proxyUrl}`)
+  } catch (e) {
+    console.error(`[v0] Failed to configure proxy:`, e)
+  }
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams

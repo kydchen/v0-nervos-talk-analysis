@@ -29,6 +29,10 @@ This tool is **NOT** a decision-maker; it is an **"Intelligence Staff Officer" (
 * **Timeline Analysis**: Temporal distribution of posts and sentiments.
 * **Raw Data Access**: Full access to the raw post list with role labels for manual verification.
 
+### 📰 4. Real-time Topic Tracking (实时话题追踪)
+* **Latest Topics Feed**: Automatically fetches and displays the top 10 active discussions from Nervos Talk (excluding pinned posts).
+* **One-Click Analysis**: Instantly auto-fill and start analyzing any topic by clicking its title.
+
 ## 🛠️ Design Philosophy / 设计哲学
 
 This tool implements concepts from **Behavioral Economics** and **Political Philosophy** to foster rational deliberation:
