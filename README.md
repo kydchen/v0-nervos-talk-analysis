@@ -47,7 +47,7 @@ Instead of letting LLMs struggle with raw Discourse HTML/JSON (which wastes cont
 
 ### OpenClaw Skill Integration
 If you use OpenClaw or similar agentic frameworks, you can inject this tool using the provided Skill file:
-[View OpenClaw Skill Config](link_to_a_gist_or_file_in_repo)
+[View OpenClaw Skill Config](https://github.com/kydchen/v0-nervos-talk-analysis/blob/main/skill.md)
 
 ## 🛠️ Design Philosophy / 设计哲学
 
