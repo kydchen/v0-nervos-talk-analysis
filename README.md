@@ -33,6 +33,22 @@ This tool is **NOT** a decision-maker; it is an **"Intelligence Staff Officer" (
 * **Latest Topics Feed**: Automatically fetches and displays the top 10 active discussions from Nervos Talk (excluding pinned posts).
 * **One-Click Analysis**: Instantly auto-fill and start analyzing any topic by clicking its title.
 
+## 🔌 5. For AI Agents (API Integration)
+
+The analyzer doubles as a micro-tool for autonomous AI agents (OpenClaw, Claude MCP, ChatGPT Actions). 
+
+Instead of letting LLMs struggle with raw Discourse HTML/JSON (which wastes context windows and induces hallucinations), agents can call our optimized endpoint:
+
+**Endpoint:** `GET /api/agent?url=<DISCOURSE_TOPIC_URL>`
+
+### Why use this API?
+1. **Cognitive Noise Reduction**: Strips 90% of UI metadata and HTML tags, returning a highly compressed, token-efficient JSON array of pure discussion text.
+2. **Built-in Governance Mindset**: The API response includes a `recommended_prompt`. By feeding this directly to the LLM, you instantly align the agent with rigorous governance frameworks (Identity Blindness, Evidence > Authority, Floor Citations).
+
+### OpenClaw Skill Integration
+If you use OpenClaw or similar agentic frameworks, you can inject this tool using the provided Skill file:
+[View OpenClaw Skill Config](link_to_a_gist_or_file_in_repo)
+
 ## 🛠️ Design Philosophy / 设计哲学
 
 This tool implements concepts from **Behavioral Economics** and **Political Philosophy** to foster rational deliberation:
